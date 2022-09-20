@@ -21,8 +21,8 @@ ser=serial.Serial('/dev/ttyUSB0',115200,timeout=0.5)
 # assuming counterclockwise movement, next target position will be (x+40, y)
 # car will need to do a fwdright followed by a U turn
 
-QUARTERTURNRAD = 25
-UTURNRAD = 50 #assumption
+QUARTERTURNRAD = 13
+UTURNRAD = 17 #assumption
 #initialize obstacle at (100,100)
 
 def fwdtilclose():
