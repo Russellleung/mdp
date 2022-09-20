@@ -8,6 +8,7 @@ import socket
 from imutils.video import VideoStream
 from picamera import PiCamera
 from picamera.array import PiRGBArray
+import STM_connection
 
 import multiprocessing
 
@@ -43,31 +44,28 @@ def fwdtilclose():
             return print("Obstacle infront")
     #wait to receive stop signal at 20cm
 
+
+def moveForwardUntilObstacle():
+    global ser
+    #add code to make it go forward til its 20cm away from obstacle
+    ser.write("C100".encode())
+
+    while True:    
+        read = ser.read()
+        readDecoded = read.decode()
+        print(readDecoded)
+
+        #receive '0' when 20 cm for stop signal
+        if readDecoded == 'O':
+            return print("Obstacle infront")
+    #wait to receive stop signal at 20cm
+
 def execute(instlist):
     #execute instructions and wait for response when whole sequence done
     global ser
-    count = 0
-    # Instructions to receive:
-    #first = 's035'
-    #second = 'e090'
-    #third = 'w015'
-    #forth = 'q180'
     for inst in instlist:
         ser.write(inst.encode())
         time.sleep(10)
-
-
-
-
-    instStr = ''
-    while (count < len(instlist)):
-        instStr += (instlist[count])
-        count += 1
-    #instStr="".join(instlist)
-    ser.write(instStr.encode())
-    time.sleep(20)
-    print('first 20 seconds')
-    return
 
 def scanimage():
     #start camera
@@ -98,19 +96,19 @@ def move(units):
     #tell car to move x units
     if units < 0:
         #rev
-        return 's0'+ str(-units)
+        return 'S0'+ str(-units)
     else:
         #fwd
         if units < 10:
-            return 'w00' + str(units)
-        return 'w0' + str(units)
+            return 'W00' + str(units)
+        return 'W0' + str(units)
         
 def uturn():
     #uturn left
-    return 'q180'
+    return 'Q180'
 
 def turnright():
-    return 'e090'
+    return 'E090'
 
 def turncalc():
     instruction = []
@@ -123,13 +121,15 @@ def turncalc():
     instruction.append(uturn())
     return instruction
 
+
+
 #process
 print('Starting process')
 sender = imagezmq.ImageSender(connect_to='tcp://192.168.40.48:5555')
 rpi_name = socket.gethostname()
 print('Server connection established')
 #Begin moving forward
-fwdtilclose()
+moveForwardUntilObstacle()
 print('Image scanning')
 #Path for STM
 stmlist = turncalc()
@@ -138,9 +138,18 @@ while not scanimage():
     #send the path list
     print('Executing path')
     execute(stmlist)
-    #wait for proces to finish
-    time.sleep(4)
-    #move forward till 20cm
-    fwdtilclose()
+    moveForwardUntilObstacle()
     print('Obstacle detected')
     print('Image scanning')
+
+
+
+# moveForwardUntilObstacle()
+# stmlist = turncalc()
+# for _ in range(2):
+#     #send the path list
+#     print('Executing path')
+#     execute(stmlist)
+#     moveForwardUntilObstacle()
+#     print('Obstacle detected')
+#     print('Image scanning')
