@@ -14,6 +14,10 @@ class STMConnection():
 
     def thread_send(self,text):
         global ser
+        print("hi")
         ser=serial.Serial('/dev/ttyUSB0',115200,timeout=0.5)
+        print(text, type(text))
+        print(text, type(text.encode()))
         ser.write(text.encode())
+        print("sent")
         time.sleep(0.5)

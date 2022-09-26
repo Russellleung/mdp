@@ -34,10 +34,10 @@ class bluetoothAndroid:
         addr = "6C:2F:8A:38:0E:AA"
         stm = STMConnection()
         print("stm connected")
-        a = 'p'
-        stm.thread_send(a)
+        #a = 'p'
+        #stm.thread_send(a)
         stm.thread_send('W020')
-        
+
 
         os.system('sudo hciconfig hci0 piscan')
         server_sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
@@ -63,7 +63,7 @@ class bluetoothAndroid:
 
         # Listen for instructions from Android
         try:
-                while False:
+                while True:
                         
                         print("In while loop...")
 #                         stm.thread_send( 'W030')
@@ -75,12 +75,12 @@ class bluetoothAndroid:
                         self.write_to_android('status,START', client_sock)
 
                         # For manual controls on Tablet
-                        if text == 'w': direction = 'w000'
-                        elif text == 's': direction = 's015'
+                        if text == 'STM,W': direction = 'W015'
+                        elif text == 'STM,S': direction = 'S015'
                         elif text == 'STM,A': direction = 'A015'
-                        elif text == 'd': direction = 'd015'
-                        elif text == 'q': direction = 'q015'
-                        elif text == 'e': direction = 'e015'
+                        elif text == 'STM,D': direction = 'D015'
+                        elif text == 'STM,Q': direction = 'Q015'
+                        elif text == 'STM,E': direction = 'E015'
                         elif text == 'f': direction = 'f000'
                         elif text[:5] == 'begin': direction = text
                         else:
