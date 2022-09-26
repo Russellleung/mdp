@@ -1,3 +1,4 @@
+from curses import keyname
 import cv2
 import imagezmq
 import socket
@@ -22,14 +23,20 @@ while True:
     output = p[1]
     with open('outputs/output_test.txt', 'w') as f:    # path to output .txt file
      f.write(output)
-    message = detection.process_output(path = "outputs/output_test.txt")
+    message_dict = detection.process_output(path = "outputs/output_test.txt")
+
+    message = detection.highest_conf(message_dict)[1]
 
     #message = str(message)
-    if message==10:
-        message = "False"
-    else:
-        message = "True"
+    #if message==10:
+        #message = "False"
+    #else:
+        #message = "True"
 
-    print(message)
+    print("message = ", message)
     message = message.encode('utf-8')
     image_hub.send_reply(message)
+
+
+
+
