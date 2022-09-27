@@ -434,7 +434,7 @@ def convertToAndroid(pathList):
     for i in range (len(pathList[0])):
         x = int((pathList[0][i][1] - 5)/10)
         y = int((200 - 5 - pathList[0][i][0])/10)
-        instruction.append('robot,' +str(x)+ ',' +str(y)+ ',' +pathList[2][i])
+        instruction.append('ROBOT,' +str(x)+ ',' +str(y)+ ',' +pathList[2][i])
     return instruction
 
 def instToFollow(nodePath, map, destination):

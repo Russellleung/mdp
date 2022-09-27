@@ -36,7 +36,7 @@ class bluetoothAndroid:
         print("stm connected")
         #a = 'p'
         #stm.thread_send(a)
-        stm.thread_send('W020')
+        # stm.thread_send('W020')
 
 
         os.system('sudo hciconfig hci0 piscan')
@@ -96,67 +96,67 @@ class bluetoothAndroid:
                                 client_sock.send("Data sent to STM")
                                 print('Executed command from Android to STM')
 
-                        # Send instructions for Image Recognition
-                        # elif direction[:8] == 'beginImg':
-                        #         # Find path
-                        #         combinedPath = pathFinder(direction)
-                        #         print('Sent path to RPI algorithm')
+                        #Send instructions for Image Recognition
+                        elif direction[:8] == 'taskOne':
+                                # Find path
+                                combinedPath = pathFinder(direction)
+                                print('Sent path to RPI algorithm')
 
-                        #         # Arrange output format
-                        #         allPaths = combinedPath[0]
-                        #         android = combinedPath[1]
-                        #         target = combinedPath[2]
+                                # Arrange output format
+                                allPaths = combinedPath[0]
+                                android = combinedPath[1]
+                                target = combinedPath[2]
 
-                        #         counter = 1
-                        #         x = 0
+                                counter = 1
+                                x = 0
 
-                        #         # Sort the path instructions
-                        #         for path in allPaths:
-                        #                 newInst = []
-                        #                 start = path[0]
-                        #                 count = int(str(start[1:]))
+                                # Sort the path instructions
+                                for path in allPaths:
+                                        newInst = []
+                                        start = path[0]
+                                        count = int(str(start[1:]))
 
-                        #                 # Append instruction list such that all consecutive movements in the same direction are summed together
-                        #                 for inst in path[1:]:
-                        #                        if start[0] == inst[0]:
-                        #                                   count += int(str(inst[1:]))
-                        #                        else:
-                        #                                   total = count 
-                        #                                   if total < 10:
-                        #                                              newInst.append(start[0] + '00' + str(total))
-                        #                                   elif total < 100:
-                        #                                              newInst.append(start[0] + '0' + str(total))
-                        #                                   else:
-                        #                                              newInst.append(start[0] + str(total))
-                        #                                   start = inst
-                        #                                   count = int(str(start[1:]))
-                        #                 total = count 
-                        #                 if total < 10:
-                        #                        newInst.append(start[0] + '00' + str(total))
-                        #                 elif total < 100:
-                        #                        newInst.append(start[0] + '0' + str(total))
-                        #                 else:
-                        #                        newInst.append(start[0] + str(total))
+                                        # Append instruction list such that all consecutive movements in the same direction are summed together
+                                        for inst in path[1:]:
+                                               if start[0] == inst[0]:
+                                                          count += int(str(inst[1:]))
+                                               else:
+                                                          total = count 
+                                                          if total < 10:
+                                                                     newInst.append(start[0] + '00' + str(total))
+                                                          elif total < 100:
+                                                                     newInst.append(start[0] + '0' + str(total))
+                                                          else:
+                                                                     newInst.append(start[0] + str(total))
+                                                          start = inst
+                                                          count = int(str(start[1:]))
+                                        total = count 
+                                        if total < 10:
+                                               newInst.append(start[0] + '00' + str(total))
+                                        elif total < 100:
+                                               newInst.append(start[0] + '0' + str(total))
+                                        else:
+                                               newInst.append(start[0] + str(total))
 
-                        #                 # Print appended path that will be sent to STM along with checking with Image Server
-                        #                 print('New path: ')
-                        #                 print(newInst)
+                                        # Print appended path that will be sent to STM along with checking with Image Server
+                                        print('New path: ')
+                                        print(newInst)
 
-                        #                 text = self.pc_comms.execute(newInst, target[counter])
-                        #                 counter += 1
+                                        text = self.pc_comms.execute(newInst, target[counter])
+                                        counter += 1
 
-                        #                 self.write_to_android(android[x][-1], client_sock)
-                        #                 x += 1
+                                        self.write_to_android(android[x][-1], client_sock)
+                                        x += 1
 
-                        #                 # Send to android the locations of robot
-                        #                 time.sleep(1)
-                        #                 self.write_to_android(text, client_sock)
-                        #                 print('sent to android')
+                                        
+                                        time.sleep(1)
+                                        self.write_to_android(text, client_sock)
+                                        print('sent to android')
 
-                        #         # Update information that robot has finished execution
-                        #         time.sleep(0.2)
-                        #         self.write_to_android('status,END', client_sock)
-                        #         print('done')
+                                # Update information that robot has finished execution
+                                time.sleep(0.2)
+                                self.write_to_android('status,END', client_sock)
+                                print('done')
 
                         # # Execute fastest path
                         # elif direction[:6] == 'beginF':
