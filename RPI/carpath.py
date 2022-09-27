@@ -57,56 +57,56 @@ def getnextLoc(node):
 
 def adjust(node, nextloc):
     if node.direction == 'n':
-        nextloc.append((node.row - 1, node.col, 'n', 'w001'))
+        nextloc.append((node.row - 1, node.col, 'n', 'W001'))
     elif node.direction == 'e':
-        nextloc.append((node.row, node.col + 1, 'e', 'w001'))
+        nextloc.append((node.row, node.col + 1, 'e', 'W001'))
     elif node.direction == 's':
-        nextloc.append((node.row + 1, node.col, 's', 'w001')) 
+        nextloc.append((node.row + 1, node.col, 's', 'W001')) 
     elif node.direction == 'w':
-        nextloc.append((node.row, node.col - 1, 'w', 'w001'))  
+        nextloc.append((node.row, node.col - 1, 'w', 'W001'))  
 
 def checkfwd(node, nextloc):
     if node.prevaction == 's':
         return
     elif node.direction == 'n':
-        nextloc.append((node.row + 1, node.col, 'n', 'w005'))
-        nextloc.append((node.row + 2, node.col, 'n', 'w010'))
-        nextloc.append((node.row + 3, node.col, 'n', 'w015'))
-        nextloc.append((node.row + 4, node.col, 'n', 'w020'))
-        nextloc.append((node.row + 5, node.col, 'n', 'w025'))
-        nextloc.append((node.row + 6, node.col, 'n', 'w030'))
-        nextloc.append((node.row + 7, node.col, 'n', 'w035'))
-        nextloc.append((node.row + 8, node.col, 'n', 'w040'))
+        nextloc.append((node.row + 1, node.col, 'n', 'W005'))
+        nextloc.append((node.row + 2, node.col, 'n', 'W010'))
+        nextloc.append((node.row + 3, node.col, 'n', 'W015'))
+        nextloc.append((node.row + 4, node.col, 'n', 'W020'))
+        nextloc.append((node.row + 5, node.col, 'n', 'W025'))
+        nextloc.append((node.row + 6, node.col, 'n', 'W030'))
+        nextloc.append((node.row + 7, node.col, 'n', 'W035'))
+        nextloc.append((node.row + 8, node.col, 'n', 'W040'))
     elif node.direction == 'e':
-        nextloc.append((node.row, node.col + 1, 'e', 'w005'))
-        nextloc.append((node.row, node.col + 2, 'e', 'w010'))
-        nextloc.append((node.row, node.col + 3, 'e', 'w015'))
-        nextloc.append((node.row, node.col + 4, 'e', 'w020'))
-        nextloc.append((node.row, node.col + 5, 'e', 'w025'))
-        nextloc.append((node.row, node.col + 6, 'e', 'w030'))
-        nextloc.append((node.row, node.col + 7, 'e', 'w035'))
-        nextloc.append((node.row, node.col + 8, 'e', 'w040'))
+        nextloc.append((node.row, node.col + 1, 'e', 'W005'))
+        nextloc.append((node.row, node.col + 2, 'e', 'W010'))
+        nextloc.append((node.row, node.col + 3, 'e', 'W015'))
+        nextloc.append((node.row, node.col + 4, 'e', 'W020'))
+        nextloc.append((node.row, node.col + 5, 'e', 'W025'))
+        nextloc.append((node.row, node.col + 6, 'e', 'W030'))
+        nextloc.append((node.row, node.col + 7, 'e', 'W035'))
+        nextloc.append((node.row, node.col + 8, 'e', 'W040'))
     elif node.direction == 's':
-        nextloc.append((node.row - 1, node.col, 's', 'w005'))
-        nextloc.append((node.row - 2, node.col, 's', 'w010'))
-        nextloc.append((node.row - 3, node.col, 's', 'w015'))
-        nextloc.append((node.row - 4, node.col, 's', 'w020')) 
-        nextloc.append((node.row - 5, node.col, 's', 'w025'))
-        nextloc.append((node.row - 6, node.col, 's', 'w030'))
-        nextloc.append((node.row - 7, node.col, 's', 'w035'))
-        nextloc.append((node.row - 8, node.col, 's', 'w040')) 
+        nextloc.append((node.row - 1, node.col, 's', 'W005'))
+        nextloc.append((node.row - 2, node.col, 's', 'W010'))
+        nextloc.append((node.row - 3, node.col, 's', 'W015'))
+        nextloc.append((node.row - 4, node.col, 's', 'W020')) 
+        nextloc.append((node.row - 5, node.col, 's', 'W025'))
+        nextloc.append((node.row - 6, node.col, 's', 'W030'))
+        nextloc.append((node.row - 7, node.col, 's', 'W035'))
+        nextloc.append((node.row - 8, node.col, 's', 'W040')) 
     elif node.direction == 'w':
-        nextloc.append((node.row, node.col - 1, 'w', 'w005'))
-        nextloc.append((node.row, node.col - 2, 'w', 'w010'))
-        nextloc.append((node.row, node.col - 3, 'w', 'w015'))
-        nextloc.append((node.row, node.col - 4, 'w', 'w020'))
-        nextloc.append((node.row, node.col - 5, 'w', 'w025'))
-        nextloc.append((node.row, node.col - 6, 'w', 'w030'))
-        nextloc.append((node.row, node.col - 7, 'w', 'w035'))
-        nextloc.append((node.row, node.col - 8, 'w', 'w040'))
+        nextloc.append((node.row, node.col - 1, 'w', 'W005'))
+        nextloc.append((node.row, node.col - 2, 'w', 'W010'))
+        nextloc.append((node.row, node.col - 3, 'w', 'W015'))
+        nextloc.append((node.row, node.col - 4, 'w', 'W020'))
+        nextloc.append((node.row, node.col - 5, 'w', 'W025'))
+        nextloc.append((node.row, node.col - 6, 'w', 'W030'))
+        nextloc.append((node.row, node.col - 7, 'w', 'W035'))
+        nextloc.append((node.row, node.col - 8, 'w', 'W040'))
 
 def checkrev(node, nextloc):
-    if node.prevaction == 'w':
+    if node.prevaction == 'W':
         return
     elif node.direction == 'n':
         nextloc.append((node.row - 1, node.col, 'n', 's'))
@@ -146,7 +146,7 @@ def checkrev(node, nextloc):
         nextloc.append((node.row, node.col + 8, 'w', 's'))
 
 def checkleftrev(node, nextloc): # a
-    if node.prevaction == 'q':
+    if node.prevaction == 'Q':
         return
     elif node.direction == 'n':
         nextloc.append((node.row - YDIS, node.col - XDIS, 'e', 'a'))
@@ -194,7 +194,7 @@ def checkrightfwd(node, nextloc): # e
         nextloc.append((node.row + XDIS, node.col - YDIS, 'n', 'e'))
 
 def checkTurningCollision(map, currentNode, endNode):
-    if (endNode[3] == 'w' or endNode[3] == 's' or endNode[3] == 'w001'): # if going forward/reverse
+    if (endNode[3] == 'w' or endNode[3] == 's' or endNode[3] == 'W001'): # if going forward/reverse
         return False
 
     if map.grid[endNode[0]][endNode[1]] == 5:
@@ -322,7 +322,7 @@ def bulldoze(map, start, end):
 
             if next.prevaction == 'w' or next.prevaction == 's':
                 next.g = currentNode.g + 5
-            elif next.prevaction == 'w001':
+            elif next.prevaction == 'W001':
                 next.g = currentNode.g + 1
             else:
                 next.g = currentNode.g + 100
@@ -390,7 +390,7 @@ def findpath(map,start,end):
 
             if next.prevaction == 'w' or next.prevaction == 's':
                 next.g = currentNode.g + 5
-            elif next.prevaction == 'w001':
+            elif next.prevaction == 'W001':
                 next.g = currentNode.g + 1
             else:
                 next.g = currentNode.g + 100
@@ -415,15 +415,15 @@ def convertToRobot(pathList): # TODO: what are our admissible UART instructions
         if pathList[i][:1] == 'w':
             instruction.append(pathList[i])
         elif pathList[i] == 's':
-            instruction.append("s005")
+            instruction.append("S005")
         elif pathList[i] == 'a':
-            instruction.append("a090")
+            instruction.append("A090")
         elif pathList[i] == 'd':
-            instruction.append("d090")
+            instruction.append("D090")
         elif pathList[i] == 'q':
-            instruction.append("q090")
+            instruction.append("Q090")
         elif pathList[i] == 'e':
-            instruction.append("e090")
+            instruction.append("E090")
     return instruction
 
 # send to android : robot, x, y, direction

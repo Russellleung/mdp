@@ -83,7 +83,7 @@ class bluetoothAndroid:
                 elif text == 'f': direction = 'f000'
                 elif text[:5] == 'begin': direction = text
                 else:
-                    direction='w000'
+                    direction='W000'
                     print("no text")
 
                 android = []
