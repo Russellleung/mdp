@@ -63,111 +63,112 @@ class bluetoothAndroid:
 
         # Listen for instructions from Android
         try:
-                while True:
-                        
-                        print("In while loop...")
-#                         stm.thread_send( 'W030')
-                        data = client_sock.recv(1024)
-                        print("Received [%s]" %data)
-                        text = str(data.decode())
-                        print(text)
-                        
-                        self.write_to_android('status,START', client_sock)
+            while True:
+                print("In while loop...")
+                # stm.thread_send( 'W030')
+                data = client_sock.recv(1024)
+                print("Received [%s]" %data)
+                text = str(data.decode())
+                print(text)
+                
+                self.write_to_android('status,START', client_sock)
 
-                        # For manual controls on Tablet
-                        if text == 'STM,W': direction = 'W015'
-                        elif text == 'STM,S': direction = 'S015'
-                        elif text == 'STM,A': direction = 'A015'
-                        elif text == 'STM,D': direction = 'D015'
-                        elif text == 'STM,Q': direction = 'Q015'
-                        elif text == 'STM,E': direction = 'E015'
-                        elif text == 'f': direction = 'f000'
-                        elif text[:5] == 'begin': direction = text
+                # For manual controls on Tablet
+                if text == 'STM,W': direction = 'W015'
+                elif text == 'STM,S': direction = 'S015'
+                elif text == 'STM,A': direction = 'A015'
+                elif text == 'STM,D': direction = 'D015'
+                elif text == 'STM,Q': direction = 'Q015'
+                elif text == 'STM,E': direction = 'E015'
+                elif text == 'f': direction = 'f000'
+                elif text[:5] == 'begin': direction = text
+                else:
+                    direction='w000'
+                    print("no text")
+
+                android = []
+                allPaths = []
+
+                # Send instructions to STM for manual controls
+                if len(direction)<5:
+                    stm.thread_send(direction) 
+                    client_sock.send("Data sent to STM")
+                    print('Executed command from Android to STM')
+
+                # Send instructions for Image Recognition
+                elif direction[:8] == 'taskOne':
+                    # Find path
+
+                    # TODO: am pretty sure direction is not holding what we want, needs a change. After that is done can call self.parseAndroidToCarpath()
+                    combinedPath = pathFinder(direction) 
+                    print('Sent path to RPI algorithm')
+
+                    # Arrange output format
+                    # TODO: these variables need a change in name for clarity's sake, then call self.parseCarpathToAndroid()
+                    allPaths = combinedPath[0] # 2D array showing list of UART instructions from current obstacle to next obstacle i.e. path segments
+                    android = combinedPath[1] # 1D array showing order of obstacles to visit
+                    target = combinedPath[2] # 3D array showing position [x, y, D] of robot after each UART instruction separated by path segments
+
+                    counter = 1
+                    x = 0
+
+                    # Sort the path instructions
+                    for path in allPaths:
+                        newInst = []
+                        start = path[0]
+                        count = int(str(start[1:]))
+
+                        # Append instruction list such that all consecutive movements in the same direction are summed together
+                        for inst in path[1:]:
+                            if start[0] == inst[0]:
+                                count += int(str(inst[1:]))
+                            else:
+                                total = count 
+                                if total < 10:
+                                    newInst.append(start[0] + '00' + str(total))
+                                elif total < 100:
+                                    newInst.append(start[0] + '0' + str(total))
+                                else:
+                                    newInst.append(start[0] + str(total))
+                                start = inst
+                                count = int(str(start[1:]))
+                        total = count 
+                        if total < 10:
+                            newInst.append(start[0] + '00' + str(total))
+                        elif total < 100:
+                            newInst.append(start[0] + '0' + str(total))
                         else:
-                            direction='w000'
-                            print("no text")
+                            newInst.append(start[0] + str(total))
 
-                        android = []
-                        allPaths = []
+                        # Print appended path that will be sent to STM along with checking with Image Server
+                        print('New path: ')
+                        print(newInst)
 
-                        # Send instructions to STM for manual controls
-                        if len(direction)<5:
-                                stm.thread_send(direction) 
-                                client_sock.send("Data sent to STM")
-                                print('Executed command from Android to STM')
+                        text = self.pc_comms.execute(newInst, target[counter])
+                        counter += 1
 
-                        #Send instructions for Image Recognition
-                        elif direction[:8] == 'taskOne':
-                                # Find path
-                                combinedPath = pathFinder(direction)
-                                print('Sent path to RPI algorithm')
+                        self.write_to_android(android[x][-1], client_sock)
+                        x += 1
 
-                                # Arrange output format
-                                allPaths = combinedPath[0]
-                                android = combinedPath[1]
-                                target = combinedPath[2]
+                        time.sleep(1)
+                        self.write_to_android(text, client_sock)
+                        print('sent to android')
 
-                                counter = 1
-                                x = 0
+                    # Update information that robot has finished execution
+                    time.sleep(0.2)
+                    self.write_to_android('status,END', client_sock)
+                    print('done')
 
-                                # Sort the path instructions
-                                for path in allPaths:
-                                        newInst = []
-                                        start = path[0]
-                                        count = int(str(start[1:]))
+                # # Execute fastest path
+                # elif direction[:6] == 'beginF':
+                #         instructions = 'r065p000'
+                #         stm.thread_send(instructions)
 
-                                        # Append instruction list such that all consecutive movements in the same direction are summed together
-                                        for inst in path[1:]:
-                                               if start[0] == inst[0]:
-                                                          count += int(str(inst[1:]))
-                                               else:
-                                                          total = count 
-                                                          if total < 10:
-                                                                     newInst.append(start[0] + '00' + str(total))
-                                                          elif total < 100:
-                                                                     newInst.append(start[0] + '0' + str(total))
-                                                          else:
-                                                                     newInst.append(start[0] + str(total))
-                                                          start = inst
-                                                          count = int(str(start[1:]))
-                                        total = count 
-                                        if total < 10:
-                                               newInst.append(start[0] + '00' + str(total))
-                                        elif total < 100:
-                                               newInst.append(start[0] + '0' + str(total))
-                                        else:
-                                               newInst.append(start[0] + str(total))
-
-                                        # Print appended path that will be sent to STM along with checking with Image Server
-                                        print('New path: ')
-                                        print(newInst)
-
-                                        text = self.pc_comms.execute(newInst, target[counter])
-                                        counter += 1
-
-                                        self.write_to_android(android[x][-1], client_sock)
-                                        x += 1
-
-                                        
-                                        time.sleep(1)
-                                        self.write_to_android(text, client_sock)
-                                        print('sent to android')
-
-                                # Update information that robot has finished execution
-                                time.sleep(0.2)
-                                self.write_to_android('status,END', client_sock)
-                                print('done')
-
-                        # # Execute fastest path
-                        # elif direction[:6] == 'beginF':
-                        #         instructions = 'r065p000'
-                        #         stm.thread_send(instructions)
-
-                        else:
-                                print('No data sent')
+                else:
+                    print('No data sent')
         # Error handling
         except IOError:
-                pass
+            pass
         
         # Awaits next instruction
         print("all done")
@@ -175,6 +176,19 @@ class bluetoothAndroid:
     def startComms(self):
         conn = bluetoothAndroid()
         conn.connect_android()
+
+    def parseAndroidToCarpath(self, androidInput):
+        # input is 1,1/1,2/.../20,20
+        output = [inputs.split(',') for inputs in androidInput.split('/')]
+        output = [[(int(position[0])-1)*10+5, (int(position[1])-1)*10+5, position[2].lower()]for position in output] # TODO: check whether +5 is required (will it give errors?)
+        return output
+
+    def parseCarpathToAndroid(self, carPathInput):
+        output = []
+        for path in carPathInput:
+            for position in path:
+                output += [','.join(['ROBOT', str((position[0])//2), str((position[1])//2), position[2].upper()])]
+        return output
         
 test = bluetoothAndroid()
 test.startComms()
