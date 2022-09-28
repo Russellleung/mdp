@@ -7,8 +7,6 @@ from carpath import *
 from map import *
 
 import imagezmq
-import cv2
-from imutils.video import VideoStream
 from picamera import PiCamera
 from picamera.array import PiRGBArray
 
@@ -24,7 +22,7 @@ class PC_Comm:
             print('Server connection establishing with Image Server')
             global sender
             global rpi_name
-            sender = imagezmq.ImageSender(connect_to='tcp://192.168.40.49:5555')
+            sender = imagezmq.ImageSender(connect_to='tcp://192.168.35.23:5555')
             rpi_name = socket.gethostname()
             print('Connection established with Image Server')
         except:
