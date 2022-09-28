@@ -23,7 +23,7 @@ def travellingSalesman(start,obstacles):
                     
             for prevLast,toAdd in permutations(present,2):
                 newPathCost=matrix[bits^(1<<toAdd)][prevLast][0] + connectGraph[prevLast][toAdd]
-                newPath=matrix[bits^(1<<toAdd)][prevLast][1]+[obstacles[i]]
+                newPath=matrix[bits^(1<<toAdd)][prevLast][1]+[obstacles[toAdd]]
                 matrix[bits][toAdd]=min(matrix[bits][toAdd],(newPathCost,newPath))
                
         return min(matrix[-1])[1]
