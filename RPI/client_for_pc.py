@@ -39,7 +39,7 @@ class PC_Comm:
         for inst in instlist:
             stm.thread_send(inst)
             while True:
-                if stm.thread_recv()=="Done":
+                if stm.thread_recv()=="A":
                     break
         text = PC_Comm.scanimage(PC_Comm, target)
         return text
