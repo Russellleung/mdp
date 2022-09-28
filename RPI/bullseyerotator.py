@@ -29,7 +29,7 @@ def fwdtilclose():
     global ser
     #add code to make it go forward til its 20cm away from obstacle
     print('Move forward')
-    stmtosend = 'w000'
+    stmtosend = 'w000' # TODO: Needs change to STM instruction?
     ser.write(stmtosend.encode())
     #remove once buffer is done
     time.sleep(4)
