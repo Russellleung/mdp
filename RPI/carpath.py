@@ -6,6 +6,7 @@
 # 's' = backward
 # 'd' = right backward
 
+from itertools import permutations
 from cmath import inf
 import sys
 import numpy as np
@@ -267,29 +268,68 @@ def parseCoord(obstacleString):
 #         pathFile.write("%d->" % i)
 #     return path
 
-def exhaustiveSearch(n, obstacles): #brute force approach
-    path=[]
-    totalCost=0
-    minCost = inf
-    for node1 in range(1,n): #cost from start to node 1
-        totalCost = travelTime(obstacles[0],obstacles[node1])
-        for node2 in range(1,n):
-            if node2==node1:
-                continue
-            totalCost+=travelTime(obstacles[node1],obstacles[node2])
-            for node3 in range(1,n):
-                if node3==node1 or node3==node2:
-                    continue 
-                totalCost+=travelTime(obstacles[node2],obstacles[node3])
-                for node4 in range(1,n):
-                    if node4==node3 or node4==node2 or node4 == node1:
-                        continue
-                    totalCost+=travelTime(obstacles[node3],obstacles[node4])
-                    if totalCost<minCost:
-                        minCost = totalCost
-                        path=[0,node1,node2,node3,node4]                
-    print(path)
-    return path
+# def exhaustiveSearch(n, obstacles): #brute force approach
+#     path=[]
+#     totalCost=0
+#     minCost = inf
+#     for node1 in range(1,n): #cost from start to node 1
+#         totalCost = travelTime(obstacles[0],obstacles[node1])
+#         for node2 in range(1,n):
+#             if node2==node1:
+#                 continue
+#             totalCost+=travelTime(obstacles[node1],obstacles[node2])
+#             for node3 in range(1,n):
+#                 if node3==node1 or node3==node2:
+#                     continue 
+#                 totalCost+=travelTime(obstacles[node2],obstacles[node3])
+#                 for node4 in range(1,n):
+#                     if node4==node3 or node4==node2 or node4 == node1:
+#                         continue
+#                     totalCost+=travelTime(obstacles[node3],obstacles[node4])
+#                     if totalCost<minCost:
+#                         minCost = totalCost
+#                         path=[0,node1,node2,node3,node4]                
+#     print(path)
+#     return path
+
+def exhaustiveSearch(n,obstacles):
+        start = obstacles[0]
+        tempObstacles = obstacles
+        obstacles=obstacles[1:]
+        lenObstacles=len(obstacles)
+        
+        connectGraph=[[[[]] for i in range(lenObstacles)] for i in range(lenObstacles)]
+        for i in range(lenObstacles):
+            for j in range(lenObstacles):
+                if i!=j:
+                    connectGraph[i][j]=getDist(obstacles[i],obstacles[j])
+        
+        
+        
+        maxBit=1<<lenObstacles
+        matrix=[[(float("inf"),[])]*lenObstacles for i in range(maxBit)]
+        for i in range(lenObstacles): 
+            matrix[1<<i][i] = (getDist(start,obstacles[i]), [start,obstacles[i]])
+        
+        for bits in range(maxBit):
+            present=[]
+            for i in range(lenObstacles):
+                if (1<<i) & bits:
+                    present.append(i)
+                    
+            for prevLast,toAdd in permutations(present,2):
+                newPathCost=matrix[bits^(1<<toAdd)][prevLast][0] + connectGraph[prevLast][toAdd]
+                newPath=matrix[bits^(1<<toAdd)][prevLast][1]+[obstacles[toAdd]]
+                matrix[bits][toAdd]=min(matrix[bits][toAdd],(newPathCost,newPath))
+
+        path=[]
+        for node in min(matrix[-1])[1]:
+            path.append(tempObstacles.index(node))
+        return path
+
+
+def getDist(p1,p2):
+    return abs(p1[0]-p2[0]) + abs(p1[1]-p2[1])
 
 def calculateCost(n, index, obstacles, visited):
     cost = [0 for i in range(n)]
