@@ -4,7 +4,6 @@ import shutil
 import os
 
 def stitching():
-
   # replace with new directory
   image_folder = r'C:\Users\ASUS\Desktop\mdp\mdpv1_yolov5\stitchedImages\rawCaptures'
   imagePaths = list(paths.list_images(image_folder))
@@ -56,7 +55,7 @@ def copyCapture():
                     break 
               ii += 1
 
-def clearImages(folder):
+def clearFolder(folder):
   for filename in os.listdir(folder):
       file_path = os.path.join(folder, filename)
       try:
@@ -67,7 +66,16 @@ def clearImages(folder):
       except Exception as e:
           print('Failed to delete %s. Reason: %s' % (file_path, e))
 
-# clearImages(r'C:\Users\ASUS\Desktop\mdp\mdpv1_yolov5\stitchedImages\rawCaptures')
-# clearImages(r'C:\Users\ASUS\Desktop\mdp\mdpv1_yolov5\runs\detect')
-# copyCapture()
-# stitching()
+def start_stitch():
+  copyCapture()
+  stitching()
+
+def clear_runs_rawCaptures():
+  clearFolder(r'C:\Users\ASUS\Desktop\mdp\mdpv1_yolov5\stitchedImages\rawCaptures')
+  clearFolder(r'C:\Users\ASUS\Desktop\mdp\mdpv1_yolov5\runs\detect')
+
+def clear_rawCaptures():
+  clearFolder(r'C:\Users\ASUS\Desktop\mdp\mdpv1_yolov5\stitchedImages\rawCaptures')
+
+def clear_runs():
+  clearFolder(r'C:\Users\ASUS\Desktop\mdp\mdpv1_yolov5\runs\detect')
