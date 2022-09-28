@@ -6,6 +6,7 @@
 # 's' = backward
 # 'd' = right backward
 
+from cmath import inf
 import sys
 import numpy as np
 import math
@@ -233,30 +234,60 @@ def parseCoord(obstacleString):
     col = 10*x+5
     return (row,col,direction)
 
-# find path to visit 
-def nearestNeightbour(n, obstacles):
-    path = []
-    visited = [False for i in range(n)]
-    visited[0] = True
-    currentNodeIndex = 0
-    path.append(0)
-    cost = calculateCost(n, 0, obstacles, visited)
-    #print(cost)
-    for i in range (n-1):
-        closestDist = 9999
-        closestDistIndex = 0
-        for i in range(len(cost)):
-            if visited[i] == True:
-                continue
-            if cost[i] < closestDist:
-                closestDist = cost[i]
-                closestDistIndex = i
+# # find path to visit 
+# def nearestNeightbour(n, obstacles):
+#     print("n:",n)
+#     print("obstacles",obstacles)
+#     path = []
+#     visited = [False for i in range(n)]
+#     visited[0] = True
+#     currentNodeIndex = 0
+#     path.append(0)
+#     cost = calculateCost(n, 0, obstacles, visited)
+#     print(cost)
+#     #print(cost)
+#     for i in range (n-1):
+#         closestDist = 9999
+#         closestDistIndex = 0
+#         for i in range(len(cost)):
+#             if visited[i] == True:
+#                 continue
+#             if cost[i] < closestDist:
+#                 closestDist = cost[i]
+#                 closestDistIndex = i
         
-        path.append(closestDistIndex)
-        visited[closestDistIndex] = True
-        currentNodeIndex = closestDistIndex
-        cost = calculateCost(n, currentNodeIndex, obstacles, visited)
+#         path.append(closestDistIndex)
+#         visited[closestDistIndex] = True
+#         currentNodeIndex = closestDistIndex
+#         cost = calculateCost(n, currentNodeIndex, obstacles, visited)
 
+#     print(path)
+#     pathFile=open("path.txt","w")
+#     for i in path:
+#         pathFile.write("%d->" % i)
+#     return path
+
+def exhaustiveSearch(n, obstacles): #brute force approach
+    path=[]
+    totalCost=0
+    minCost = inf
+    for node1 in range(1,n): #cost from start to node 1
+        totalCost = travelTime(obstacles[0],obstacles[node1])
+        for node2 in range(1,n):
+            if node2==node1:
+                continue
+            totalCost+=travelTime(obstacles[node1],obstacles[node2])
+            for node3 in range(1,n):
+                if node3==node1 or node3==node2:
+                    continue 
+                totalCost+=travelTime(obstacles[node2],obstacles[node3])
+                for node4 in range(1,n):
+                    if node4==node3 or node4==node2 or node4 == node1:
+                        continue
+                    totalCost+=travelTime(obstacles[node3],obstacles[node4])
+                    if totalCost<minCost:
+                        minCost = totalCost
+                        path=[0,node1,node2,node3,node4]                
     print(path)
     return path
 
@@ -462,7 +493,7 @@ def pathFinder(pathFromAndroid, map):
     destination = [i for i in destination if i != "No goal"]
     print(destination)
 
-    nodePath = nearestNeightbour(len(destination), destination)
+    nodePath = exhaustiveSearch(len(destination), destination)
     appendedPath, appendedLocations = instToFollow(nodePath, map, destination)
     appendedPath.append(nodePath)
     return appendedPath, appendedLocations
