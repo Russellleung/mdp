@@ -1,5 +1,5 @@
 from itertools import permutations
-def travellingSalesman(start,obstacles):
+def exhaustiveSearch(start,obstacles):
         lenObstacles=len(obstacles)
         
         connectGraph=[[[[]] for i in range(lenObstacles)] for i in range(lenObstacles)]
@@ -33,4 +33,4 @@ def getDist(p1,p2):
     return abs(p1[0]-p2[0]) + abs(p1[1]-p2[1])
 
 
-print(travellingSalesman([0,0],[[3,4],[5,6],[8,7],[10,11],[2,10]]))
+print(exhaustiveSearch([0,0],[[3,4],[5,6],[8,7],[10,11],[2,10]]))
