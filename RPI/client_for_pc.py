@@ -36,7 +36,7 @@ class PC_Comm:
 
     # Function to execute each path one by one
 
-    def execute1(self, instlist, target):
+    def execute(self, instlist, target):
         stm = STMConnection()
         for inst in instlist:
             stm.thread_send(inst)
@@ -74,11 +74,11 @@ class PC_Comm:
         if isinstance(reply, int):
                 if reply < 41 and reply >10:
                 	    #image recognized, send acknowledgement to android
-                        text = 'TARGET,' + str(target) + ',' +  str(reply) 
+                        text = 'TARGET,' + ",".join(target[:2]) + ',' +  str(reply) 
                         return text
                 else:
                         print('not in image id')
-                        text = 'TARGET,' + str(target) + ',' + str(reply)
+                        text = 'TARGET,' + ",".join(target[:2]) + ',' + str(reply)
                         return text
         else:
                 # continue to move for STM

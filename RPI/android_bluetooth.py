@@ -7,6 +7,8 @@ import time
 import bluetooth
 import os
 
+from mdp.RPI.carpath import pathFinder
+
 class bluetoothAndroid:
 
     # Address of android tablet
@@ -96,11 +98,11 @@ class bluetoothAndroid:
                     print('Executed command from Android to STM')
 
                 # Send instructions for Image Recognition
-                elif direction[:8] == 'taskOne':
+                elif direction[:7] == 'taskOne':
                     # Find path
 
                     # TODO: am pretty sure direction is not holding what we want, needs a change. After that is done can call self.parseAndroidToCarpath()
-                    combinedPath = pathFinder(direction) 
+                    combinedPath = pathFinder(self.parseAndroidToCarpath(direction[:7]))
                     print('Sent path to RPI algorithm')
 
                     # Arrange output format
@@ -147,7 +149,7 @@ class bluetoothAndroid:
                         text = self.pc_comms.execute(newInst, target[counter])
                         counter += 1
 
-                        self.write_to_android(android[x][-1], client_sock)
+                        self.write_to_android(self.parseCarpathToAndroid(android[x][-1]), client_sock)
                         x += 1
 
                         time.sleep(1)
