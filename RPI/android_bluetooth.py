@@ -74,7 +74,7 @@ class bluetoothAndroid:
                 print(text)
                 
                 self.write_to_android('status,START', client_sock)
-                #text="taskOne2,3,N/10,15,N/5,7,N/17,18,N"
+                #text="taskOne2,3,N/10,15,N/5,7,N/17,18,S"
                 # For manual controls on Tablet
                 if text == 'STM,W': direction = 'W015'
                 elif text == 'STM,S': direction = 'S015'
