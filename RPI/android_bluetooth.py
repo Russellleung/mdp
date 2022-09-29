@@ -74,7 +74,7 @@ class bluetoothAndroid:
                 print(text)
                 
                 self.write_to_android('status,START', client_sock)
-
+                #text="taskOne2,3,N/10,15,N/5,7,N/17,18,N"
                 # For manual controls on Tablet
                 if text == 'STM,W': direction = 'W015'
                 elif text == 'STM,S': direction = 'S015'
@@ -83,14 +83,14 @@ class bluetoothAndroid:
                 elif text == 'STM,Q': direction = 'Q015'
                 elif text == 'STM,E': direction = 'E015'
                 elif text == 'f': direction = 'f000'
-                elif text[:5] == 'begin': direction = text
+                elif text[:4] == 'task': direction = text
                 else:
                     direction='W000'
                     print("no text")
 
                 android = []
                 allPaths = []
-
+                
                 # Send instructions to STM for manual controls
                 if len(direction)<5:
                     stm.thread_send(direction) 
@@ -102,7 +102,7 @@ class bluetoothAndroid:
                     # Find path
 
                     # TODO: am pretty sure direction is not holding what we want, needs a change. After that is done can call self.parseAndroidToCarpath()
-                    combinedPath = pathFinder(self.parseAndroidToCarpath(direction[:7]))
+                    combinedPath = pathFinder(self.parseAndroidToCarpath(direction[7:]))
                     print('Sent path to RPI algorithm')
 
                     # Arrange output format
