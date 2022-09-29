@@ -7,7 +7,8 @@ import time
 import bluetooth
 import os
 
-from mdp.RPI.carpath import pathFinder
+from carpath import pathFinder
+from map import Map
 
 class bluetoothAndroid:
 
@@ -67,7 +68,6 @@ class bluetoothAndroid:
         try:
             while True:
                 print("In while loop...")
-                # stm.thread_send( 'W030')
                 data = client_sock.recv(1024)
                 print("Received [%s]" %data)
                 text = str(data.decode())
@@ -99,22 +99,21 @@ class bluetoothAndroid:
 
                 # Send instructions for Image Recognition
                 elif direction[:7] == 'taskOne':
-                    # Find path
 
-                    # TODO: am pretty sure direction is not holding what we want, needs a change. After that is done can call self.parseAndroidToCarpath()
-                    combinedPath = pathFinder(self.parseAndroidToCarpath(direction[7:]))
-                    print('Sent path to RPI algorithm')
+                    unsortedTargets=self.parseAndroidToCarpath(direction[7:])
+                    combinedPath,android = pathFinder(unsortedTargets,Map())
+                    
+                    allPaths = combinedPath[0] 
+                    target = combinedPath[1]
+                    target=[unsortedTargets[i] for i in target]
 
-                    # Arrange output format
-                    # TODO: these variables need a change in name for clarity's sake, then call self.parseCarpathToAndroid()
-                    allPaths = combinedPath[0] # 2D array showing list of UART instructions from current obstacle to next obstacle i.e. path segments
-                    android = combinedPath[1] # 1D array showing order of obstacles to visit
-                    target = combinedPath[2] # 3D array showing position [x, y, D] of robot after each UART instruction separated by path segments
 
+                    print(allPaths)  # 2D array showing list of UART instructions from current obstacle to next obstacle i.e. path segments
+                    print(android)  # 1D array showing order of obstacles to visit 
+                    print(target) # 3D array showing position [x, y, D] of robot after each UART instruction separated by path segments
                     counter = 1
                     x = 0
-
-                    # Sort the path instructions
+                    
                     for path in allPaths:
                         newInst = []
                         start = path[0]
@@ -145,7 +144,7 @@ class bluetoothAndroid:
                         # Print appended path that will be sent to STM along with checking with Image Server
                         print('New path: ')
                         print(newInst)
-
+                    
                         text = self.pc_comms.execute(newInst, target[counter])
                         counter += 1
 
