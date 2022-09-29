@@ -90,7 +90,7 @@ class Map:
         #check if map coordinate is within range
         if unscaled:
             npy, npx = self.scale_down(npy, npx)
-        if npy < 3 or npy > 38 or npx < 3 or npx > 38:
+        if npy < 3 or npy > 37 or npx < 3 or npx > 37:
             return False
         else:
             return True
@@ -145,12 +145,12 @@ class Map:
         row, col = self.scale_down(row, col)
 
         if direction == 'n':
-            if (row+7)>38:
+            if (row+7)>37:
                 return ('No goal')
             self.grid[row+7][col] = 4
             return (row+7, col, 's')
         elif direction == 'e':
-            if (col+7)>38:
+            if (col+7)>37:
                 return ('No goal')
             self.grid[row][col+7] = 3
             return (row, col+7, 'w')

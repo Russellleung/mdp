@@ -6,6 +6,7 @@ import socket
 import time
 import bluetooth
 import os
+import platform
 
 from carpath import pathFinder
 from map import Map
@@ -17,13 +18,13 @@ class bluetoothAndroid:
 
     # Function for sending to android
     def write_to_android(self, text, client_sock):
-        print(text)
-        print(type(text))
+        print(text, type(text))
+
         try:
             client_sock.send(text)
         except Exception as e:
             # displayed on android
-            print('[write to RPI ERROR] %s' % str(e))
+            print(f'[write to RPI ERROR] {str(e)}')
             raise e
 
     def __init__(self):
@@ -41,8 +42,13 @@ class bluetoothAndroid:
         #stm.thread_send(a)
         # stm.thread_send('W020')
 
+        platformName = platform.system()
 
-        os.system('sudo hciconfig hci0 piscan')
+        if platformName == "Linux" or platformName == "Darwin":
+            os.system('sudo hciconfig hci0 piscan')
+        else:
+            print(f'Platform {platformName} not supported')
+
         server_sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
         port = 1
 
@@ -58,11 +64,11 @@ class bluetoothAndroid:
          profiles = [ bluetooth.SERIAL_PORT_PROFILE ],
         )
 
-        print("Waiting for connection on RFCOMM channel %d" % port)
+        print(f"Waiting for connection on RFCOMM channel {port}")
 
         # Bluetooth has successfully connected
         client_sock, client_info = server_sock.accept()
-        print("Accepted connection from ", client_info)
+        print(f"Accepted connection from {client_info}")
 
         # Listen for instructions from Android
         try:
@@ -74,31 +80,26 @@ class bluetoothAndroid:
                 print(text)
                 
                 self.write_to_android('status,START', client_sock)
-                #text="taskOne2,3,N/10,15,N/5,7,N/17,18,S"
+                # text="taskOne2,3,N/10,15,N/5,7,N/17,18,S"
                 # For manual controls on Tablet
                 if text == 'STM,W': direction = 'W015'
                 elif text == 'STM,S': direction = 'S015'
-                elif text == 'STM,A': direction = 'A015'
-                elif text == 'STM,D': direction = 'D015'
-                elif text == 'STM,Q': direction = 'Q015'
-                elif text == 'STM,E': direction = 'E015'
-                elif text == 'f': direction = 'f000'
+                elif text == 'STM,A': direction = 'A090'
+                elif text == 'STM,D': direction = 'D090'
+                elif text == 'STM,Q': direction = 'Q090'
+                elif text == 'STM,E': direction = 'E090'
+                elif text == 'f': direction = 'f000' # TODO: what does this do?
                 elif text[:4] == 'task': direction = text
                 else:
                     direction='W000'
-                    print("no text")
+                    print("No input to Android detected")
+                    continue
 
                 android = []
                 allPaths = []
-                
-                # Send instructions to STM for manual controls
-                if len(direction)<5:
-                    stm.thread_send(direction) 
-                    client_sock.send("Data sent to STM")
-                    print('Executed command from Android to STM')
 
                 # Send instructions for Image Recognition
-                elif direction[:7] == 'taskOne':
+                if len(direction)>7 and direction[:7] == 'taskOne':
 
                     unsortedTargets=self.parseAndroidToCarpath(direction[7:])
                     combinedPath,android = pathFinder(unsortedTargets,Map())
@@ -125,21 +126,12 @@ class bluetoothAndroid:
                                 count += int(str(inst[1:]))
                             else:
                                 total = count 
-                                if total < 10:
-                                    newInst.append(start[0] + '00' + str(total))
-                                elif total < 100:
-                                    newInst.append(start[0] + '0' + str(total))
-                                else:
-                                    newInst.append(start[0] + str(total))
+                                newInst.append(start[0] + "{:03d}".format(total))
                                 start = inst
                                 count = int(str(start[1:]))
+
                         total = count 
-                        if total < 10:
-                            newInst.append(start[0] + '00' + str(total))
-                        elif total < 100:
-                            newInst.append(start[0] + '0' + str(total))
-                        else:
-                            newInst.append(start[0] + str(total))
+                        newInst.append(start[0] + "{:03d}".format(total))
 
                         # Print appended path that will be sent to STM along with checking with Image Server
                         print('New path: ')
@@ -153,20 +145,25 @@ class bluetoothAndroid:
 
                         time.sleep(1)
                         self.write_to_android(text, client_sock)
-                        print('sent to android')
+                        print('Sent to android')
 
                     # Update information that robot has finished execution
                     time.sleep(0.2)
                     self.write_to_android('status,END', client_sock)
-                    print('done')
+                    print('Done')
 
-                # # Execute fastest path
+                # Execute fastest path
                 # elif direction[:6] == 'beginF':
-                #         instructions = 'r065p000'
-                #         stm.thread_send(instructions)
 
+                #     instructions = 'r065p000'
+                #     stm.thread_send(instructions)
+
+                # Send instructions to STM for manual controls
                 else:
-                    print('No data sent')
+                    stm.thread_send(direction) 
+                    client_sock.send("Data sent to STM")
+                    print('Executed command from Android to STM')
+
         # Error handling
         except IOError:
             pass
