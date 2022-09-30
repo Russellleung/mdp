@@ -14,8 +14,8 @@ import math
 import time
 from map import *
 
-YDIS = 7
-XDIS = 2
+YDIS = 5 #forward 29cm
+XDIS = 5 #left 27cm
 
 class Node:
     def __init__(self, row, col, direction):
@@ -505,7 +505,8 @@ def findpath(map,start,end):
 
 # path is coordinates
 # [path[::-1], actions[::-1], direction[::-1]]
-def convertToRobot(pathList): 
+#pass in list of directions
+def convertToRobot(pathList): #forward 29cm left 27cm
     instruction = []
     for i in range (len(pathList)):
         if pathList[i][0] == 'W':
@@ -517,13 +518,21 @@ def convertToRobot(pathList):
         elif pathList[i][0] == 'K':
             instruction.append("K090")
         elif pathList[i] == 'A':
+            instruction.append("W004")
             instruction.append("A090")
+            instruction.append("W002")
         elif pathList[i] == 'D':
+            instruction.append("W004")
             instruction.append("D090")
+            instruction.append("W002")
         elif pathList[i] == 'Q':
+            instruction.append("S004")
             instruction.append("Q090")
+            instruction.append("S002")
         elif pathList[i] == 'E':
+            instruction.append("S004")
             instruction.append("E090")
+            instruction.append("S002")
     return instruction
 
 # send to android : robot, x, y, direction
