@@ -20,7 +20,7 @@ XDIS = 2
 class Node:
     def __init__(self, row, col, direction):
         self.parent = None
-        self.prevaction = None
+        self.prevaction = 'z'
         self.row = row
         self.col = col
         self.direction = direction
@@ -49,10 +49,13 @@ def getnextLoc(node):
     nextloc = []
     checkfwd(node, nextloc)
     checkrev(node, nextloc)
+    checkTPTLeft(node, nextloc)
+    checkTPTRight(node, nextloc)
     checkrightfwd(node, nextloc)
     checkleftfwd(node, nextloc)
     checkrightrev(node, nextloc)
     checkleftrev(node, nextloc)
+
     # if (node.row % 5 != 0 or node.col % 5 != 0):
     #     adjust(node, nextloc)
     return nextloc
@@ -67,48 +70,72 @@ def adjust(node, nextloc):
     elif node.direction == 'w':
         nextloc.append((node.row, node.col - 1, 'w', 'W001'))
 
-def checkfwd(node, nextloc):
-    if node.prevaction == 'S':
+def checkTPTLeft(node, nextloc):
+    if node.prevaction[0] == 'L':
         return
     elif node.direction == 'n':
+        nextloc.append((node.row, node.col, 'w', 'K'))
+    elif node.direction == 'e':
+        nextloc.append((node.row, node.col, 'n', 'K'))
+    elif node.direction == 's':
+        nextloc.append((node.row, node.col, 'e', 'K'))
+    elif node.direction == 'w':
+        nextloc.append((node.row, node.col, 's', 'K'))
+
+def checkTPTRight(node, nextloc):
+    # if node.prevaction[0] == 'K':
+    #     return
+    if node.direction == 'n':
+        nextloc.append((node.row, node.col, 'e', 'L'))
+    elif node.direction == 'e':
+        nextloc.append((node.row, node.col, 's', 'L'))
+    elif node.direction == 's':
+        nextloc.append((node.row, node.col, 'w', 'L'))
+    elif node.direction == 'w':
+        nextloc.append((node.row, node.col, 'n', 'L'))
+
+def checkfwd(node, nextloc):
+    # if node.prevaction[0] == 'S':
+    #     return
+    if node.direction == 'n':
         nextloc.append((node.row + 1, node.col, 'n', 'W005'))
         nextloc.append((node.row + 2, node.col, 'n', 'W010'))
-        # nextloc.append((node.row + 3, node.col, 'n', 'W015'))
-        # nextloc.append((node.row + 4, node.col, 'n', 'W020'))
-        # nextloc.append((node.row + 5, node.col, 'n', 'W025'))
-        # nextloc.append((node.row + 6, node.col, 'n', 'W030'))
-        # nextloc.append((node.row + 7, node.col, 'n', 'W035'))
-        # nextloc.append((node.row + 8, node.col, 'n', 'W040'))
+        nextloc.append((node.row + 3, node.col, 'n', 'W015'))
+        nextloc.append((node.row + 4, node.col, 'n', 'W020'))
+        nextloc.append((node.row + 5, node.col, 'n', 'W025'))
+        nextloc.append((node.row + 6, node.col, 'n', 'W030'))
+        nextloc.append((node.row + 7, node.col, 'n', 'W035'))
+        nextloc.append((node.row + 8, node.col, 'n', 'W040'))
     elif node.direction == 'e':
         nextloc.append((node.row, node.col + 1, 'e', 'W005'))
         nextloc.append((node.row, node.col + 2, 'e', 'W010'))
-        # nextloc.append((node.row, node.col + 3, 'e', 'W015'))
-        # nextloc.append((node.row, node.col + 4, 'e', 'W020'))
-        # nextloc.append((node.row, node.col + 5, 'e', 'W025'))
-        # nextloc.append((node.row, node.col + 6, 'e', 'W030'))
-        # nextloc.append((node.row, node.col + 7, 'e', 'W035'))
-        # nextloc.append((node.row, node.col + 8, 'e', 'W040'))
+        nextloc.append((node.row, node.col + 3, 'e', 'W015'))
+        nextloc.append((node.row, node.col + 4, 'e', 'W020'))
+        nextloc.append((node.row, node.col + 5, 'e', 'W025'))
+        nextloc.append((node.row, node.col + 6, 'e', 'W030'))
+        nextloc.append((node.row, node.col + 7, 'e', 'W035'))
+        nextloc.append((node.row, node.col + 8, 'e', 'W040'))
     elif node.direction == 's':
         nextloc.append((node.row - 1, node.col, 's', 'W005'))
         nextloc.append((node.row - 2, node.col, 's', 'W010'))
-        # nextloc.append((node.row - 3, node.col, 's', 'W015'))
-        # nextloc.append((node.row - 4, node.col, 's', 'W020')) 
-        # nextloc.append((node.row - 5, node.col, 's', 'W025'))
-        # nextloc.append((node.row - 6, node.col, 's', 'W030'))
-        # nextloc.append((node.row - 7, node.col, 's', 'W035'))
-        # nextloc.append((node.row - 8, node.col, 's', 'W040')) 
+        nextloc.append((node.row - 3, node.col, 's', 'W015'))
+        nextloc.append((node.row - 4, node.col, 's', 'W020')) 
+        nextloc.append((node.row - 5, node.col, 's', 'W025'))
+        nextloc.append((node.row - 6, node.col, 's', 'W030'))
+        nextloc.append((node.row - 7, node.col, 's', 'W035'))
+        nextloc.append((node.row - 8, node.col, 's', 'W040')) 
     elif node.direction == 'w':
         nextloc.append((node.row, node.col - 1, 'w', 'W005'))
         nextloc.append((node.row, node.col - 2, 'w', 'W010'))
-        # nextloc.append((node.row, node.col - 3, 'w', 'W015'))
-        # nextloc.append((node.row, node.col - 4, 'w', 'W020'))
-        # nextloc.append((node.row, node.col - 5, 'w', 'W025'))
-        # nextloc.append((node.row, node.col - 6, 'w', 'W030'))
-        # nextloc.append((node.row, node.col - 7, 'w', 'W035'))
-        # nextloc.append((node.row, node.col - 8, 'w', 'W040'))
+        nextloc.append((node.row, node.col - 3, 'w', 'W015'))
+        nextloc.append((node.row, node.col - 4, 'w', 'W020'))
+        nextloc.append((node.row, node.col - 5, 'w', 'W025'))
+        nextloc.append((node.row, node.col - 6, 'w', 'W030'))
+        nextloc.append((node.row, node.col - 7, 'w', 'W035'))
+        nextloc.append((node.row, node.col - 8, 'w', 'W040'))
 
 def checkrev(node, nextloc):
-    if node.prevaction == 'W':
+    if node.prevaction[0] == 'W':
         return
     elif node.direction == 'n':
         nextloc.append((node.row - 1, node.col, 'n', 'S005'))
@@ -485,6 +512,10 @@ def convertToRobot(pathList):
             instruction.append(pathList[i])
         elif pathList[i][0] == 'S':
             instruction.append(pathList[i])
+        elif pathList[i][0] == 'L':
+            instruction.append("L090")
+        elif pathList[i][0] == 'K':
+            instruction.append("K090")
         elif pathList[i] == 'A':
             instruction.append("A090")
         elif pathList[i] == 'D':
