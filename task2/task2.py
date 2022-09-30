@@ -24,16 +24,16 @@ def mazeRun():
     gap=10
     moveBack=(xDistance+yDistance-obstacleLength//2-gap+yDistance)-(startOfCarToObstacle+carLength//2+obstacleLength//2)
     #command to move back
-    # right_cmds = ['E090', 'Q180', 'E090']
-    # right_cmds = ['E090', 'Q135', 'E045']
     if right:
+
+        ser.write("C100".encode())
         pass
         #command to turn right 90 degrees
+
         #command to turn 180 degrees left
         #command to turn right
-
     else:
-        ser.write("Q090".encode())
+        pass
         #command to turn left 90 degrees
         #command to turn 180 degrees right
         #command to turn left
@@ -87,32 +87,4 @@ def mazeRun():
         pass
         #turn right 90 degrees
         #turn left 90 degrees
-def rightOne():
-    cmds = ['E090', 'Q180', 'E090']
-    # cmds = ['E090', 'Q135', 'E045']
-    return sendCommands(cmds)
-        
-def leftOne():
-    cmds = ['Q090', 'E180', 'Q090']
-    # cmds = ['Q090', 'E135', 'Q045']
-    return sendCommands(cmds)
-
-def rightTwo():
-    cmds = ['E090', '', 'Q180', 'E090']
-    # cmds = ['E090', 'Q135', 'E045']
-    return sendCommands(cmds)
-
-def leftTwo():
-    cmds = ['E090', 'Q180', 'E090']
-    # cmds = ['E090', 'Q135', 'E045']
-    return sendCommands(cmds)
-
-def sendCommands(cmds):
-    cmds = cmds[::-1]
-    while cmds:
-        read = ser.read()
-        if len(read) > 0:
-            if read.decode() != "A":
-                ser.write(cmds.pop().encode())
-                next
-    print("All commands sent")
+    
