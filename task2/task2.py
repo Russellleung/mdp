@@ -114,7 +114,7 @@ def sendCommands(cmds):
     while cmds:
         read = ser.read()
         if len(read) > 0:
-            if read.decode() != "A":
+            if read.decode() == "A":
                 ser.write(cmds.pop().encode())
                 next
     print("All commands sent")
