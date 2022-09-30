@@ -178,14 +178,14 @@ class bluetoothAndroid:
     def parseAndroidToCarpath(self, androidInput):
         # input is 1,1/1,2/.../20,20
         output = [inputs.split(',') for inputs in androidInput.split('/')]
-        output = [[(int(position[0])-1)*10+5, (int(position[1])-1)*10+5, position[2].lower()]for position in output] # TODO: check whether +5 is required (will it give errors?)
+        output = [[(int(position[1])-1)*10+5, (int(position[0])-1)*10+5, position[2].lower()]for position in output] # TODO: check whether +5 is required (will it give errors?)
         return output
 
     def parseCarpathToAndroid(self, carPathInput):
         output = []
         for path in carPathInput:
             for position in path:
-                output += [','.join(['ROBOT', str((position[0])//2), str((position[1])//2), position[2].upper()])]
+                output += [','.join(['ROBOT', str((position[1])//2), str((position[0])//2), position[2].upper()])]
         return output
         
 test = bluetoothAndroid()
