@@ -1,6 +1,7 @@
 # from STM_connection import STMConnection
 import serial
 import time
+import math
 
 # read = ser.read()
 # ser.write(text.encode())
@@ -23,7 +24,7 @@ def mazeRun():
     firstRight = True # TODO: get from Image Rec
 
     gap = 10
-    moveBack = (xDistance + yDistance - obstacleLength//2 - gap + yDistance)-(startOfCarToObstacle+carLength//2 + obstacleLength//2)
+    firstMoveBack = (xDistance + yDistance - obstacleLength//2 - gap + yDistance)-(startOfCarToObstacle+carLength//2 + obstacleLength//2)
     
     if firstRight:
         rightOne()
@@ -42,6 +43,10 @@ def mazeRun():
     
     secondMoveBack = xDistance+yDistance-(startOfCarToObstacle+carLength//2+obstacleLength//2)
 
+    distanceToOrigin = 
+
+    angleToOrigin = 90 - math.degrees(math.atan((firstMoveBack + secondMoveBack)/25))
+
     if secondRight:
         rightTwo()
     else:
@@ -59,15 +64,6 @@ def mazeRun():
     #command to move straight with accountForLaterTurns distance
 
 
-
-    if secondRight:
-        pass
-        #turn left 90 degrees
-        #turn right 90 degrees
-    else:
-        pass
-        #turn right 90 degrees
-        #turn left 90 degrees
 def rightOne():
     # cmds = ['E090', 'Q180', 'E090']
     # cmds = ['E090', 'Q135', 'E045']
@@ -80,12 +76,13 @@ def leftOne():
     cmds = ['S005', 'Q045', 'E090', 'Q045'] 
     return sendCommands(cmds)
 
-def rightTwo():
+def rightTwo(distance = 100, angle = 90):
     cmds = ['E090', 'W010', 'Q180', 'W055', 'Q090']
     # TODO: calculate angle to go back to carpark
+    cmds.append({}.format())
     return sendCommands(cmds)
 
-def leftTwo():
+def leftTwo(distance = 100, angle = 90):
     cmds = ['Q090', 'W010', 'E180', 'W055', 'E090']
     # TODO: calculate angle to go back to carpark
     return sendCommands(cmds)
