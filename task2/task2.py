@@ -2,75 +2,56 @@
 import serial
 import time
 
+# read = ser.read()
+# ser.write(text.encode())
+
 def mazeRun():
     ser=serial.Serial('/dev/ttyUSB0',115200,timeout=0.5)
 
-    yDistance = 28 #forward distance when turning
-    xDistance = 28 #side distance when turning
+    yDistance = 28 # forward distance when turning
+    xDistance = 28 # side distance when turning
 
     obstacleLength = 10
     carLength = 30
 
-    startOfCarToObstacle = 20 #physical dist between car to obstacle
-
-
+    startOfCarToObstacle = 20 # physical dist between car to obstacle
 
     # command to move forward until 20cm from obstacle, store L1
-    l1 = 40 # get from stm
+    l1 = 40 # get from STM
 
     # take picture
-    right = True #get from image rec
+    firstRight = True # TODO: get from Image Rec
 
     gap = 10
-    moveBack = (xDistance+yDistance-obstacleLength//2-gap+yDistance)-(startOfCarToObstacle+carLength//2+obstacleLength//2)
-    #command to move back
-    # right_cmds = ['E090', 'Q180', 'E090']
-    # right_cmds = ['E090', 'Q135', 'E045']
-    if right:
-        pass
-        #command to turn right 90 degrees
-        #command to turn 180 degrees left
-        #command to turn right
-
+    moveBack = (xDistance + yDistance - obstacleLength//2 - gap + yDistance)-(startOfCarToObstacle+carLength//2 + obstacleLength//2)
+    
+    if firstRight:
+        rightOne()
     else:
-        ser.write("Q090".encode())
-        #command to turn left 90 degrees
-        #command to turn 180 degrees right
-        #command to turn left
+        leftOne()
+
+
 
 
     #command to move forward until 20cm from obstacle, store l2
+
+
     l2=40 #get from stm
 
-    #take picture
-    secondRight=True #get from image rec
-
+    secondRight = True # TODO: get from Image Rec
+    
     secondMoveBack = xDistance+yDistance-(startOfCarToObstacle+carLength//2+obstacleLength//2)
-    #command to second move back
 
     if secondRight:
-        pass
-        #command to turn 90 degrees right
-        #command to turn 180 degrees left
+        rightTwo()
     else:
-        pass
-        #command to turn 90 degrees left
-        #command to turn 180 degrees right
-
+        leftTwo()
 
     secondObstacleLongLength=60
     protrude = (xDistance+yDistance-secondObstacleLongLength//2)
     moveAlongSecondObstacle=secondObstacleLongLength-(secondObstacleLongLength//2-xDistance) - (yDistance-protrude)
     #command to move along second obstacle
 
-
-
-    if secondRight:
-        pass
-        #turn left 90 degrees
-    else:
-        pass
-        #turn right 90 degrees
 
 
     TotalDistToOrigin=carLength//2 + l1 + startOfCarToObstacle + obstacleLength + gap + xDistance + l2 + startOfCarToObstacle + obstacleLength//2
@@ -100,12 +81,12 @@ def leftOne():
     return sendCommands(cmds)
 
 def rightTwo():
-    cmds = ['E090', 'W010', 'Q180', 'W055', 'E090']
+    cmds = ['E090', 'W010', 'Q180', 'W055', 'Q090']
     # TODO: calculate angle to go back to carpark
     return sendCommands(cmds)
 
 def leftTwo():
-    cmds = ['Q090', 'W010', 'E180', 'W055', 'Q090']
+    cmds = ['Q090', 'W010', 'E180', 'W055', 'E090']
     # TODO: calculate angle to go back to carpark
     return sendCommands(cmds)
 
@@ -113,8 +94,9 @@ def sendCommands(cmds):
     cmds = cmds[::-1]
     while cmds:
         read = ser.read()
-        if len(read) > 0:
-            if read.decode() == "A":
-                ser.write(cmds.pop().encode())
-                next
+        if read.decode() == "A":
+            ser.write(cmds.pop().encode())
+            next
+    while ser.read() != "A":
+        next
     print("All commands sent")
