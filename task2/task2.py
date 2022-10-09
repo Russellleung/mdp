@@ -1,75 +1,33 @@
-# from STM_connection import STMConnection
+from client_for_pc import PC_Comm
+
 import serial
 import time
 import math
 
-# read = ser.read()
-# ser.write(text.encode())
-
 def mazeRun():
-	ser=serial.Serial('/dev/ttyUSB0',115200,timeout=0.5)
-
-	yDistance = 28 # forward distance when turning
-	xDistance = 28 # side distance when turning
-
-	obstacleLength = 10
-	carLength = 30
-
-	startOfCarToObstacle = 20 # physical dist between car to obstacle
-
-	# command to move forward until 20cm from obstacle, store L1
-	l1 = 40 # get from STM
-
+	pc_comms = PC_Comm()
+	pc_comms.connect_PC()
+	ser = serial.Serial('/dev/ttyUSB0', 115200, timeout = 0.5)
 	
-
-	gap = 10
-	firstMoveBack = (xDistance + yDistance - obstacleLength//2 - gap + yDistance)-(startOfCarToObstacle+carLength//2 + obstacleLength//2)
-	
-	firstMoveBack = moveForward()
-
 	# take picture
-	firstRight = True # TODO: get from Image Rec
+	firstRight = pc_comms.execute() # TODO: get from Image Rec
+
+	firstMoveBack = moveForward()
 
 	if firstRight:
 		rightOne()
 	else:
 		leftOne()
 
-	secondRight = True # TODO: get from Image Rec
+	secondRight = pc_comms.execute() # TODO: get from Image Rec
 
-	moveForward()
+	secondMoveBack = moveForward()
 
 	if secondRight:
-		rightTwo()
+		rightTwo(firstMoveBack, secondMoveBack)
 	else:
-		leftTwo()
+		leftTwo(firstMoveBack, secondMoveBack)
 
-
-	#command to move forward until 20cm from obstacle, store l2
-
-
-	l2=40 #get from stm
-
-	
-	
-	secondMoveBack = xDistance+yDistance-(startOfCarToObstacle+carLength//2+obstacleLength//2)
-
-	distanceToOrigin = 
-
-	angleToOrigin = 90 - math.degrees(math.atan((firstMoveBack + secondMoveBack)/25))
-
-	
-
-	secondObstacleLongLength=60
-	protrude = (xDistance+yDistance-secondObstacleLongLength//2)
-	moveAlongSecondObstacle=secondObstacleLongLength-(secondObstacleLongLength//2-xDistance) - (yDistance-protrude)
-	#command to move along second obstacle
-
-
-
-	TotalDistToOrigin=carLength//2 + l1 + startOfCarToObstacle + obstacleLength + gap + xDistance + l2 + startOfCarToObstacle + obstacleLength//2
-	accountForLaterTurns=TotalDistToOrigin-yDistance-xDistance
-	#command to move straight with accountForLaterTurns distance
 
 def moveForward()
 	cmds = [] 
@@ -89,19 +47,21 @@ def leftOne():
 
 def rightTwo(distance1 = 100, distance2 = 100):
 	cmds = ['E090', 'W010', 'Q180', 'W055']
-	distance = distance1 + distance2 + 10
+	
 	# TODO: calculate angle to go back to carpark
 	# 50 refers to the distance of robot from centre of line
 	if distance2 > distance1:
 		cmds.append('Q' + "{:03d}".format(90))
 		cmds.append('W' + "{:03d}".format(distance2 - distance1))
 
-		cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan((2*distance1)/50)))))
-		cmds.append('W' + "{:03d}".format(round(((2*distance1)**2 + 50**2)**0.5)))
-		# cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan(((2*distance1)-5)/50))) + 90))
-		# cmds.append('W' + "{:03d}".format(round((((2*distance1)-5)**2 + 50**2)**0.5)))
-		# cmds.append('E' + "{:03d}".format(round(math.degrees(math.atan(((2*distance1)-5)/50)))))
+		cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan((2*distance1 + 10)/50)))))
+		cmds.append('W' + "{:03d}".format(round(((2*distance1 + 10)**2 + 50**2)**0.5)))
+		# cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan(((2*distance1 + 10)-5)/50))) + 90))
+		# cmds.append('W' + "{:03d}".format(round((((2*distance1 + 10)-5)**2 + 50**2)**0.5)))
+		# cmds.append('E' + "{:03d}".format(round(math.degrees(math.atan(((2*distance1 + 10)-5)/50)))))
 	else:
+		distance = distance1 + distance2 + 10
+
 		cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan(distance/50))) + 90))
 		cmds.append('W' + "{:03d}".format(round((distance**2 + 50**2)**0.5)))
 		# cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan((distance-5)/50))) + 90))
@@ -112,9 +72,26 @@ def rightTwo(distance1 = 100, distance2 = 100):
 
 def leftTwo(distance1 = 100, distance2 = 100):
 	cmds = ['Q090', 'W010', 'E180', 'W055']
+
 	# TODO: calculate angle to go back to carpark
-	cmds.append('E' + "{:03d}".format(round(math.degrees(math.atan(distance/50))) + 90))
-	cmds.append('W' + "{:03d}".format(round((distance**2 + 50**2)**0.5)))
+	if distance2 > distance1:
+		cmds.append('E' + "{:03d}".format(90))
+		cmds.append('W' + "{:03d}".format(distance2 - distance1))
+
+		cmds.append('E' + "{:03d}".format(round(math.degrees(math.atan((2*distance1 + 10)/50)))))
+		cmds.append('W' + "{:03d}".format(round(((2*distance1 + 10)**2 + 50**2)**0.5)))
+		# cmds.append('E' + "{:03d}".format(round(math.degrees(math.atan(((2*distance1 + 10)-5)/50))) + 90))
+		# cmds.append('W' + "{:03d}".format(round((((2*distance1 + 10)-5)**2 + 50**2)**0.5)))
+		# cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan(((2*distance1 + 10)-5)/50)))))
+	else:
+		distance = distance1 + distance2 + 10
+		
+		cmds.append('E' + "{:03d}".format(round(math.degrees(math.atan(distance/50))) + 90))
+		cmds.append('W' + "{:03d}".format(round((distance**2 + 50**2)**0.5)))
+		# cmds.append('E' + "{:03d}".format(round(math.degrees(math.atan((distance-5)/50))) + 90))
+		# cmds.append('W' + "{:03d}".format(round(((distance-5)**2 + 50**2)**0.5)))
+		# cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan((distance-5)/50)))))
+
 	return sendCommands(cmds)
 
 def sendCommands(cmds):
