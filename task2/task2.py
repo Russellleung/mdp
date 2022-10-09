@@ -20,20 +20,29 @@ def mazeRun():
 	# command to move forward until 20cm from obstacle, store L1
 	l1 = 40 # get from STM
 
-	# take picture
-	firstRight = True # TODO: get from Image Rec
+	
 
 	gap = 10
 	firstMoveBack = (xDistance + yDistance - obstacleLength//2 - gap + yDistance)-(startOfCarToObstacle+carLength//2 + obstacleLength//2)
 	
+	firstMoveBack = moveForward()
 
+	# take picture
+	firstRight = True # TODO: get from Image Rec
 
 	if firstRight:
 		rightOne()
 	else:
 		leftOne()
 
+	secondRight = True # TODO: get from Image Rec
 
+	moveForward()
+
+	if secondRight:
+		rightTwo()
+	else:
+		leftTwo()
 
 
 	#command to move forward until 20cm from obstacle, store l2
@@ -41,7 +50,7 @@ def mazeRun():
 
 	l2=40 #get from stm
 
-	secondRight = True # TODO: get from Image Rec
+	
 	
 	secondMoveBack = xDistance+yDistance-(startOfCarToObstacle+carLength//2+obstacleLength//2)
 
@@ -49,10 +58,7 @@ def mazeRun():
 
 	angleToOrigin = 90 - math.degrees(math.atan((firstMoveBack + secondMoveBack)/25))
 
-	if secondRight:
-		rightTwo()
-	else:
-		leftTwo()
+	
 
 	secondObstacleLongLength=60
 	protrude = (xDistance+yDistance-secondObstacleLongLength//2)
@@ -81,15 +87,30 @@ def leftOne():
 	cmds = ['S005', 'Q045', 'E090', 'Q045'] 
 	return sendCommands(cmds)
 
-def rightTwo(distance = 100, angle = 90):
+def rightTwo(distance1 = 100, distance2 = 100):
 	cmds = ['E090', 'W010', 'Q180', 'W055']
+	distance = distance1 + distance2 + 10
 	# TODO: calculate angle to go back to carpark
 	# 50 refers to the distance of robot from centre of line
-	cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan(distance/50))) + 90))
-	cmds.append('W' + "{:03d}".format(round((distance**2 + 50**2)**0.5)))
+	if distance2 > distance1:
+		cmds.append('Q' + "{:03d}".format(90))
+		cmds.append('W' + "{:03d}".format(distance2 - distance1))
+
+		cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan((2*distance1)/50)))))
+		cmds.append('W' + "{:03d}".format(round(((2*distance1)**2 + 50**2)**0.5)))
+		# cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan(((2*distance1)-5)/50))) + 90))
+		# cmds.append('W' + "{:03d}".format(round((((2*distance1)-5)**2 + 50**2)**0.5)))
+		# cmds.append('E' + "{:03d}".format(round(math.degrees(math.atan(((2*distance1)-5)/50)))))
+	else:
+		cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan(distance/50))) + 90))
+		cmds.append('W' + "{:03d}".format(round((distance**2 + 50**2)**0.5)))
+		# cmds.append('Q' + "{:03d}".format(round(math.degrees(math.atan((distance-5)/50))) + 90))
+		# cmds.append('W' + "{:03d}".format(round(((distance-5)**2 + 50**2)**0.5)))
+		# cmds.append('E' + "{:03d}".format(round(math.degrees(math.atan((distance-5)/50)))))
+
 	return sendCommands(cmds)
 
-def leftTwo(distance = 100, angle = 90):
+def leftTwo(distance1 = 100, distance2 = 100):
 	cmds = ['Q090', 'W010', 'E180', 'W055']
 	# TODO: calculate angle to go back to carpark
 	cmds.append('E' + "{:03d}".format(round(math.degrees(math.atan(distance/50))) + 90))
@@ -107,3 +128,7 @@ def sendCommands(cmds):
 		time.sleep(0.6)
 		next
 	print("All commands sent")
+
+if __name__ == "__main__":
+	print('Start Maze Run')
+	mazeRun()
