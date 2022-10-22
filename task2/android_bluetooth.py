@@ -34,8 +34,7 @@ class bluetoothAndroid:
         self.sock = None
         self.isConnected = False
         self.threadListening = False
-        self.pc_comms = PC_Comm()
-        #self.pc_comms.connect_PC()
+        #self.pc_comms = PC_Comm()
 
     # Function for connecting to android
     def connect_android(self):
@@ -71,7 +70,7 @@ class bluetoothAndroid:
         client_sock, client_info = server_sock.accept()
         print(f"Accepted connection from {client_info}")
         
-        self.pc_comms.connect_PC()
+        #self.pc_comms.connect_PC()
 
         # Listen for instructions from Android
         try:
@@ -104,7 +103,7 @@ class bluetoothAndroid:
                 # Send instructions for Image Recognition
                 if len(direction)==7 and direction[:7] == 'taskTwo':
 
-                    print("start button pressed")
+                    print("task 2 start button pressed")
                     mazeRun()
 
                     # Update information that robot has finished execution
@@ -114,6 +113,8 @@ class bluetoothAndroid:
                     self.write_to_android('TASK,END', client_sock)
                     
                     print('Done')
+                    
+                    break
 
                 # Send instructions to STM for manual controls
                 else:
@@ -132,7 +133,7 @@ class bluetoothAndroid:
         conn = bluetoothAndroid()
         conn.connect_android()
 
-  
-print("Starting indoor comms")
-test = bluetoothAndroid()
-test.startComms()
+if __name__ == '__main__': 
+    print("Starting task 2 comms")
+    test = bluetoothAndroid()
+    test.startComms()

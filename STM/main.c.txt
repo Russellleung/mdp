@@ -1,0 +1,2135 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2022 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+#include "cmsis_os.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include "oled.h"
+#include <math.h>
+#include "ICM20948.h"
+#include <stdio.h>
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+
+I2C_HandleTypeDef hi2c1;
+
+TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim8;
+
+UART_HandleTypeDef huart3;
+
+/* Definitions for defaultTask */
+osThreadId_t defaultTaskHandle;
+const osThreadAttr_t defaultTask_attributes = {
+  .name = "defaultTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for myTask02 */
+osThreadId_t myTask02Handle;
+const osThreadAttr_t myTask02_attributes = {
+  .name = "myTask02",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for MotorTask */
+osThreadId_t MotorTaskHandle;
+const osThreadAttr_t MotorTask_attributes = {
+  .name = "MotorTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for EncoderTask */
+osThreadId_t EncoderTaskHandle;
+const osThreadAttr_t EncoderTask_attributes = {
+  .name = "EncoderTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for pivottask */
+osThreadId_t pivottaskHandle;
+const osThreadAttr_t pivottask_attributes = {
+  .name = "pivottask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for customcommand */
+osThreadId_t customcommandHandle;
+const osThreadAttr_t customcommand_attributes = {
+  .name = "customcommand",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for ULTRA */
+osThreadId_t ULTRAHandle;
+const osThreadAttr_t ULTRA_attributes = {
+  .name = "ULTRA",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* USER CODE BEGIN PV */
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_TIM8_Init(void);
+static void MX_TIM2_Init(void);
+static void MX_TIM1_Init(void);
+static void MX_USART3_UART_Init(void);
+static void MX_I2C1_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
+void StartDefaultTask(void *argument);
+void show(void *argument);
+void motors(void *argument);
+void encoder_task(void *argument);
+void pivot(void *argument);
+void custom(void *argument);
+void ultrasonic(void *argument);
+
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+//IR sensor/adc
+uint32_t ir1;
+int ir1dist;
+int disttravelled;
+int irstop=0;//when irstop=3 then stop;
+uint8_t irBuffer[4];
+//icm20948 imu
+int16_t ICM_CumuVal;
+int16_t gyrostore;//for storing icm cumuval at end of movement
+int direction = 150;
+//encoder
+int cntr1, cntr2, diffr; //for right wheel
+int cnt1, cnt2, diff; //left wheel
+//uart
+uint8_t aRxBuffer[20];
+//uint8_t valueBuffer[7];
+char choice;
+uint16_t value=0;
+char current='X';//stores current motion
+char customend='K';//send K after end of custom movement
+//pwm for wheel speed
+uint16_t pwmValLeft=0;//A is left motor B is right
+uint16_t pwmValRight=0;
+//wheel turns remaining, 3000~=60cm
+long int leftremaining=0;
+long int rightremaining=0;
+//wheel ratio : 51 for lab?
+int wheelratio=50;
+int speed=2000;
+//motor status to send to uart
+int motormoving=0;
+//pivoting
+int pivotflag=0; //flag for pivoting, 0 is not in use, 1 is forward, 2 is backward
+//custom commands flag
+int customflag=0;
+//STORE creep forward distance to add up both
+int valuestore=0;
+//for ultrasonic
+uint32_t IC_Val1 = 0;
+uint32_t IC_Val2 = 0;
+uint32_t Difference = 0;
+uint8_t Is_First_Captured = 0;  // is the first value captured ?
+uint8_t Distance  = 0;
+
+void messageCompleteHandler(void);
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_TIM8_Init();
+  MX_TIM2_Init();
+  MX_TIM1_Init();
+  MX_USART3_UART_Init();
+  MX_I2C1_Init();
+  MX_ADC1_Init();
+  MX_TIM3_Init();
+  MX_TIM4_Init();
+  /* USER CODE BEGIN 2 */
+  OLED_Init();
+  HAL_UART_Receive_IT(&huart3,(uint8_t *) aRxBuffer,4);
+  /* USER CODE END 2 */
+
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of defaultTask */
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of myTask02 */
+  myTask02Handle = osThreadNew(show, NULL, &myTask02_attributes);
+
+  /* creation of MotorTask */
+  MotorTaskHandle = osThreadNew(motors, NULL, &MotorTask_attributes);
+
+  /* creation of EncoderTask */
+  EncoderTaskHandle = osThreadNew(encoder_task, NULL, &EncoderTask_attributes);
+
+  /* creation of pivottask */
+  pivottaskHandle = osThreadNew(pivot, NULL, &pivottask_attributes);
+
+  /* creation of customcommand */
+  customcommandHandle = osThreadNew(custom, NULL, &customcommand_attributes);
+
+  /* creation of ULTRA */
+  ULTRAHandle = osThreadNew(ultrasonic, NULL, &ULTRA_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+  }
+  /* USER CODE END 3 */
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_0;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 160;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 1000;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
+
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_Encoder_InitTypeDef sConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 4294967295;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
+  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC1Filter = 10;
+  sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC2Filter = 0;
+  if (HAL_TIM_Encoder_Init(&htim2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_Encoder_InitTypeDef sConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 0;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65535;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
+  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC1Filter = 0;
+  sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC2Filter = 0;
+  if (HAL_TIM_Encoder_Init(&htim3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 0;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 65535;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_IC_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 0;
+  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
+  * @brief TIM8 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM8_Init(void)
+{
+
+  /* USER CODE BEGIN TIM8_Init 0 */
+
+  /* USER CODE END TIM8_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  /* USER CODE BEGIN TIM8_Init 1 */
+
+  /* USER CODE END TIM8_Init 1 */
+  htim8.Instance = TIM8;
+  htim8.Init.Prescaler = 0;
+  htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim8.Init.Period = 7199;
+  htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim8.Init.RepetitionCounter = 0;
+  htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim8, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM8_Init 2 */
+
+  /* USER CODE END TIM8_Init 2 */
+
+}
+
+/**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
+
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, OLED_SCL_Pin|OLED_SDA_Pin|OLED_RST_Pin|OLED_DC_Pin
+                          |LED3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, AIN2_Pin|AIN1_Pin|BIN1_Pin|BIN2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : OLED_SCL_Pin OLED_SDA_Pin OLED_RST_Pin OLED_DC_Pin
+                           LED3_Pin */
+  GPIO_InitStruct.Pin = OLED_SCL_Pin|OLED_SDA_Pin|OLED_RST_Pin|OLED_DC_Pin
+                          |LED3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : AIN2_Pin AIN1_Pin BIN1_Pin BIN2_Pin */
+  GPIO_InitStruct.Pin = AIN2_Pin|AIN1_Pin|BIN1_Pin|BIN2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : TRIG_Pin */
+  GPIO_InitStruct.Pin = TRIG_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(TRIG_GPIO_Port, &GPIO_InitStruct);
+
+}
+
+/* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+	//prevent unused argument compilation warning
+	UNUSED(huart);
+	HAL_UART_Transmit(&huart3,(uint8_t *)aRxBuffer,10,0xFFFF);
+
+	//chiam code below
+	messageCompleteHandler();
+	HAL_UART_Receive_IT(&huart3,(uint8_t *)aRxBuffer,4);
+}
+
+void messageCompleteHandler(void){
+	  choice=aRxBuffer[0];
+	  value=0;
+	  int i;
+	  for(i=3;i>0;i--){//process 3 digit value after command
+		  value+=(aRxBuffer[i]-48)*pow(10,3-i);
+	  }
+}
+void delay (uint16_t time){
+	__HAL_TIM_SET_COUNTER(&htim4,0);
+	while (__HAL_TIM_GET_COUNTER(&htim1)<time);
+}
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {//timer 4 channel 1
+	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) // if the interrupt source is channel1
+			{
+		if (Is_First_Captured == 0) // if the first value is not captured
+				{
+			IC_Val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read the first value
+			Is_First_Captured = 1;  // set the first captured as true
+			// Now change the polarity to falling edge
+			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1,
+					TIM_INPUTCHANNELPOLARITY_FALLING);
+		}
+
+		else if (Is_First_Captured == 1)   // if the first is already captured
+				{
+			IC_Val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // read second value
+			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
+
+			if (IC_Val2 > IC_Val1) {
+				Difference = IC_Val2 - IC_Val1;
+			}
+
+			else if (IC_Val1 > IC_Val2) {
+				Difference = (0xffff - IC_Val1) + IC_Val2;
+			}
+
+			Distance = Difference * .034 / 2;
+			Is_First_Captured = 0; // set it back to false
+
+			// set polarity to rising edge
+			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1,
+					TIM_INPUTCHANNELPOLARITY_RISING);
+			__HAL_TIM_DISABLE_IT(&htim4, TIM_IT_CC1);
+		}
+	}
+}
+
+void HCSR04_Read (void)
+{
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+	//HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_SET);  // pull the TRIG pin HIGH
+	delay(10);  // wait for 10 us
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);  // pull the TRIG pin low
+
+	__HAL_TIM_ENABLE_IT(&htim4, TIM_IT_CC1);
+}
+/* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+	//uint8_t ch='A';
+	uint16_t readings[3];
+	//uint8_t buffer[20];
+	ICM_CumuVal = 0 ;
+	ICM20948_init(&hi2c1,0,GYRO_FULL_SCALE_2000DPS,ACCEL_FULL_SCALE_16G);
+	for (;;) {
+
+		//HAL_UART_Transmit(&huart3, (uint8_t*) &ch, 1, 0xFFFFFFFF);//normally FFFF test
+
+		//HAL_GPIO_TogglePin(LED3_GPIO_Port, LED3_Pin); //optional led
+		//osDelay(2000);
+
+		ICM20948_readGyroscope_allAxises(&hi2c1, 0, GYRO_FULL_SCALE_2000DPS,readings);
+		if (readings[2] > 32768) {
+			ICM_CumuVal = readings[2] - 65536 + ICM_CumuVal;
+		} else {
+			ICM_CumuVal = readings[2] + ICM_CumuVal;
+		}
+		HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1,10);
+		ir1=HAL_ADC_GetValue(&hadc1);
+		ir1dist=roundf(-14.16*log(ir1)+122.67);
+		HAL_ADC_Stop(&hadc1);
+		//sprintf(buffer, "%5d %5d\r\n", Distance,valuestore);
+		//HAL_UART_Transmit(&huart3, (uint8_t *) buffer, 20, 0xFFFFFF);
+		osDelay(100);
+
+	}
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_show */
+/**
+* @brief Function implementing the myTask02 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_show */
+void show(void *argument)
+{
+  /* USER CODE BEGIN show */
+	uint8_t hello[30];
+  /* Infinite loop */
+  for(;;)
+  {
+	  //sprintf(hello,"%s\0",choice);
+	  //OLED_ShowString(10,10,hello);
+	  OLED_Refresh_Gram();
+	  osDelay(50);
+  }
+  /* USER CODE END show */
+}
+
+/* USER CODE BEGIN Header_motors */
+/**
+* @brief Function implementing the MotorTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_motors */
+void motors(void *argument)
+{
+  /* USER CODE BEGIN motors */
+	//uint16_t pwmValLeft=0;//A is left motor B is right
+	//uint16_t pwmValRight=0;
+	HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);//left
+	HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);//right
+	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);//servo
+	HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_1);//ultrasonic??
+	//HAL_TIM_IC_Start_IT(&htim4,TIM_CHANNEL_1);//for ultrasonic
+	htim1.Instance->CCR4=150; //center steer
+
+  /* Infinite loop */
+	for(;;)
+	{
+		if(choice!='X'){//bring back stored gyro value before movement
+			//ICM20948_init(&hi2c1,0,GYRO_FULL_SCALE_2000DPS,ACCEL_FULL_SCALE_16G);//INIT GYRO B4 EVERY MOVEMENT COS AMIT SAY
+			ICM_CumuVal=gyrostore; //COMPENSATE
+		}
+		if(value<40){
+			wheelratio=47;
+			//speed=1000;
+		}
+		else{
+			wheelratio=50;
+			//speed=1500;
+		}
+		if(choice=='T'){ //test toggle led if uart working
+			if(value==123){//test
+				HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);//on led
+			}
+		}
+		else if(choice=='W'){//forward straight line
+			current=choice;//store value
+			//HAL_UART_Transmit(&huart3, (uint8_t*) &current, 1, 0xFFFFFFFF);//SEND CURRENT
+			//ICM_CumuVal=0; //test not resetting
+			htim1.Instance->CCR4=150; //straighten steer
+			leftremaining=value*wheelratio;//ratio is 50:1cm, CALIBRATE TO 45
+			rightremaining=value*wheelratio;
+			pwmValLeft=speed;//wheel speed
+			pwmValRight=speed;
+		}//endif
+		else if(choice=='C'){//forward straight line CREEP stop if IR detects obstacle
+			current=choice;//store value
+			//HAL_UART_Transmit(&huart3, (uint8_t*) &current, 1, 0xFFFFFFFF);//SEND CURRENT
+			//ICM_CumuVal=0; //test not resetting
+			irstop=0;
+			htim1.Instance->CCR4=150; //straighten steer
+			leftremaining=value*wheelratio;//ratio is 50:1cm, CALIBRATE TO 45
+			rightremaining=value*wheelratio;
+			pwmValLeft=speed*0.8;//wheel speed
+			pwmValRight=speed*0.8;
+		}//endif
+		else if(choice=='S'){//backward straight line
+			current=choice;
+			//HAL_UART_Transmit(&huart3, (uint8_t*) &current, 1, 0xFFFFFFFF);//SEND CURRENT
+			//ICM_CumuVal=0; //try not resetting
+			htim1.Instance->CCR4=150; //straighten steer
+			leftremaining=value*wheelratio;//ratio is 50:1cm, CALIBRATE TO 45
+			rightremaining=value*wheelratio;
+			pwmValLeft=speed;//wheel speed
+			pwmValRight=speed;
+		}//endif
+		else if(choice=='E' || choice=='D'){//forward right or backward right steer
+			current=choice;
+			//HAL_UART_Transmit(&huart3, (uint8_t*) &current, 1, 0xFFFFFFFF);//SEND CURRENT
+			//ICM_CumuVal=0; //try not resetting
+			htim1.Instance->CCR4=250;//servo turn right
+			pwmValLeft=speed;//wheel speed, left wheel turn faster
+			pwmValRight=speed*0.6;
+		}
+		else if(choice=='Q' || choice=='A'){//forward left or backward left steer
+			current=choice;
+			//HAL_UART_Transmit(&huart3, (uint8_t*) &current, 1, 0xFFFFFFFF);//SEND CURRENT
+			//ICM_CumuVal=0; //try not resetting
+			htim1.Instance->CCR4=100;//servo turn left
+			pwmValLeft=speed*0.6;//wheel speed, right wheel turn faster
+			pwmValRight=speed;
+		}//endif
+		else if(choice=='L'||choice=='K'){ //pivot left(K) or right(L)
+			current=choice;
+			//HAL_UART_Transmit(&huart3, (uint8_t*) &current, 1, 0xFFFFFFFF);//SEND CURRENT
+			//ICM_CumuVal=0; //try not resetting
+			pivotflag=4; //1 is forward, 2 is backward, 3 stationary, 0 is not in use, 8 is start
+		}
+		else if(choice=='J'){//custom set of commands
+			customflag=1;
+		}
+		if (current=='L'){//pivot right
+//			if (ICM_CumuVal+(value*860/90)<0){ //finish turn, just move front and back straight
+//				htim1.Instance->CCR4=150;
+//				pwmValLeft=1000;
+//				pwmValRight=1000;
+//			}
+			if (pivotflag==3){ //forward turn right
+				htim1.Instance->CCR4=250;
+				pwmValLeft=1600;
+				pwmValRight=1050;
+			}
+			else if (pivotflag==2){
+				htim1.Instance->CCR4=150;
+				pwmValLeft=0;
+				pwmValRight=0;
+			}
+			else if (pivotflag==1){ //backward turn left
+				htim1.Instance->CCR4=100;
+				pwmValLeft=1050;
+				pwmValRight=1600;
+			}
+			else if (pivotflag==4){
+				htim1.Instance->CCR4=150;
+				pwmValLeft=0;
+				pwmValRight=0;
+			}
+
+		}
+		if (current=='K'){//pivot left
+//			if (ICM_CumuVal-(value*860/90)>0){
+//				htim1.Instance->CCR4=150;
+//				pwmValLeft=1000;
+//				pwmValRight=1000;
+//			}
+			if (pivotflag==1){ //backward turn right
+				htim1.Instance->CCR4=250;
+				pwmValLeft=1600;
+				pwmValRight=1050;
+			}
+			else if(pivotflag==2){
+				htim1.Instance->CCR4=150;
+				pwmValLeft=0;
+				pwmValRight=0;
+			}
+			else if (pivotflag==3){//forward left
+				htim1.Instance->CCR4=100;
+				pwmValLeft=1050;
+				pwmValRight=1600;
+			}
+			else if(pivotflag==4){
+				htim1.Instance->CCR4=150;
+				pwmValLeft=0;
+				pwmValRight=0;
+			}
+		}
+
+
+		if (current=='W'||current=='S'){//stop at correct distance for straight movements only
+			if (leftremaining<0 || rightremaining<0){//stop, no distance left
+				pwmValLeft=0;
+				pwmValRight=0;
+				htim1.Instance->CCR4=150;
+				current='X';
+				HAL_UART_Transmit(&huart3, (uint8_t*) &current, 1, 0xFFFFFFFF);//SEND X
+				gyrostore=ICM_CumuVal;
+			}
+		}
+		if (current=='W'||current=='C'){
+			//moving forward straighten
+			if (ICM_CumuVal>1){
+				htim1.Instance->CCR4=160;
+			}
+			else if (ICM_CumuVal<-1){
+				htim1.Instance->CCR4=140;
+			}
+			else// if (ICM_CumuVal==0){
+				htim1.Instance->CCR4=150;
+			//}
+		}
+		if(current=='C'&&ir1dist<22){
+			irstop++;
+		}
+		else{
+			irstop=0;
+		}
+		if (current=='C'&&irstop>2){//obstacle detected ir
+			irstop=0;
+			pwmValLeft=0;
+			pwmValRight=0;
+			htim1.Instance->CCR4=150;
+			current='X';
+			disttravelled=value-leftremaining/wheelratio;//leftremaining might be negative if left over from
+			if(disttravelled>0 && disttravelled<151){
+				valuestore=disttravelled;//SAVE LATEST MOVED DISTANCE
+			}
+			sprintf(irBuffer, "%2d\r\n",disttravelled);
+			HAL_UART_Transmit(&huart3, (uint8_t *) irBuffer, 4, 0xFFFFFF);
+			gyrostore=0;//INSTEAD OF CUMUVAL
+		}
+		if (current=='S'){
+			//moving backward straighten
+			if (ICM_CumuVal>1){
+				htim1.Instance->CCR4=140;
+			}
+			else if (ICM_CumuVal<-1){
+				htim1.Instance->CCR4=160;
+			}
+			else// if (ICM_CumuVal==0){
+				htim1.Instance->CCR4=150;
+			//}
+		}
+		if (current=='E'||current=='A'||current=='L'){//stop after rotating right
+			if (ICM_CumuVal+(value*860/90)<=0){//CUMUVAL will be negative
+				pwmValLeft=0;
+				pwmValRight=0;
+				htim1.Instance->CCR4=150;
+				pivotflag=0;
+				current='X';
+				HAL_UART_Transmit(&huart3, (uint8_t*) &current, 1, 0xFFFFFFFF);//SEND X
+				ICM_CumuVal+=(value*860/90);//bring cumuval back to near 0 test
+				gyrostore=ICM_CumuVal;
+			}
+		}
+		if (current=='Q'||current=='D'||current=='K'){//stop after rotating LEFT
+			if (ICM_CumuVal-(value*860/90)>=0){//CUMUVAL will be positive
+				pwmValLeft=0;
+				pwmValRight=0;
+				htim1.Instance->CCR4=150;
+				pivotflag=0;
+				current='X';
+				HAL_UART_Transmit(&huart3, (uint8_t*) &current, 1, 0xFFFFFFFF);//SEND X
+				ICM_CumuVal-=(value*860/90);//bring cumuval back to near 0 test
+				gyrostore=ICM_CumuVal;
+			}
+		}
+
+		if(choice=='Q' || choice=='W' || choice=='E' || choice=='C' || pivotflag==3){//forward
+			HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);//left
+			HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);//right
+			HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+		}
+		if(choice=='A' || choice=='S' || choice=='D' || pivotflag==1){//backward
+			HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);//left
+			HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);//right
+			HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+		}
+		if (choice=='P'){//stop immediately if command is Pxxx
+			pwmValLeft=0;
+			pwmValRight=0;
+			htim1.Instance->CCR4=150;
+			current='X';
+			HAL_UART_Transmit(&huart3, (uint8_t*) &current, 1, 0xFFFFFFFF);//SEND X
+			gyrostore=ICM_CumuVal;
+		}
+		choice='X';//clear choice
+		if (current=='X'){//to send uart status
+			motormoving=0;
+		}
+		else{
+			motormoving=1;
+		}
+		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,pwmValLeft);//modify comparison value for duty cycle
+		  __HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,pwmValRight);
+    osDelay(1);
+  }
+  /* USER CODE END motors */
+}
+
+/* USER CODE BEGIN Header_encoder_task */
+/**
+* @brief Function implementing the EncoderTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_encoder_task */
+void encoder_task(void *argument)
+{
+  /* USER CODE BEGIN encoder_task */
+  /* Infinite loop */
+	HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL); //how uk tim channel all
+	HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL); //newcode
+
+	//int cnt1, cnt2, diff;
+	uint32_t tick;
+	cnt1=__HAL_TIM_GET_COUNTER(&htim2);
+	tick=HAL_GetTick(); //system tick?
+	uint8_t hello[40];
+	uint16_t dir;
+
+	//int cntr1, cntr2, diffr; //for right wheel
+	uint32_t tickr;
+	cntr1=__HAL_TIM_GET_COUNTER(&htim3);
+	//tickr=HAL_GetTick();
+	uint8_t bye[20];
+	uint16_t dirr;
+
+  for(;;)
+  {
+	  if(HAL_GetTick()-tick > 100L){//every 1000 ticks, L means long int
+		  cnt2=__HAL_TIM_GET_COUNTER(&htim2);
+		  cntr2=__HAL_TIM_GET_COUNTER(&htim3);//right wheel
+		  sprintf(hello,"%5d %5d\0",leftremaining,rightremaining);
+		  OLED_ShowString(10,40,hello);
+		  if (cnt1==cnt2){ //left wheel not moving
+			  diff=0;
+			  diffr=0;
+		  }
+		  else if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim2)){ //overflow and underflow says loke
+			  if(cnt2<cnt1)
+				  diff=cnt1-cnt2;
+			  else
+				  diff=(65535-cnt2)+cnt1;
+			  if(cntr2>cntr1)
+				  diffr=cntr2-cntr1;
+			  else
+				  diffr=(65535-cntr1)+cntr2;
+		  }
+		  else{
+			  if(cnt2>cnt1)
+				  diff=cnt2-cnt1;
+			  else
+				  diff=(65535-cnt1)+cnt2;
+
+			  if(cntr2<cntr1)
+				  diffr=cntr1-cntr2;
+			  else
+				  diffr=(65535-cntr2)+cntr1;
+		  }
+
+		  //sprintf(hello,"LeftSpd:%5d\0",diff);
+		  sprintf(hello,"IR:%5dcm\0",ir1dist);//for ir distance
+		  OLED_ShowString(10,20,hello);
+		  //sprintf(bye,"RightSpd:%5d\0",diffr);
+		  sprintf(bye,"dist:%d\0",Distance);
+		  OLED_ShowString(10,30,bye);
+		  sprintf(hello,"uart:%c %3d\0",choice,value);
+		  OLED_ShowString(10,10,hello);
+
+		  cnt1=__HAL_TIM_GET_COUNTER(&htim2);
+		  cntr1=__HAL_TIM_GET_COUNTER(&htim3);
+		  tick=HAL_GetTick();
+
+		  //decrease remaining wheel turns
+		  leftremaining=leftremaining-diff;
+		  rightremaining=rightremaining-diffr;
+	  }
+	  //osDelay(1);
+  }
+  /* USER CODE END encoder_task */
+}
+
+/* USER CODE BEGIN Header_pivot */
+/**
+* @brief Function implementing the pivottask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_pivot */
+void pivot(void *argument)
+{
+  /* USER CODE BEGIN pivot */
+	/* Infinite loop */
+	int i=0;
+	int tempvalue=0;
+	char tempcurrent='X';
+	for (;;) {
+		if (pivotflag>0) { //change pivot flag for on the spot turn
+			if (pivotflag==8){//start with reverse
+				pivotflag=1;
+			}
+			else if (pivotflag==4){
+				pivotflag=1;
+			}
+			else
+				pivotflag++;
+			osDelay(400);
+		}
+		osDelay(100);
+
+  }
+  /* USER CODE END pivot */
+}
+
+/* USER CODE BEGIN Header_custom */
+/**
+* @brief Function implementing the customcommand thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_custom */
+void custom(void *argument)
+{
+  /* USER CODE BEGIN custom */
+	/* Infinite loop */
+	for (;;) {
+		if(customflag==1){
+			if(value==000){
+				valuestore=0;//reset stored creep distance
+			}
+			else if(value==001){//obstacle 1:right
+				osDelay(100);//so that choice is reset to X before executing next line
+				value=80;
+				choice='E';//turn out
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=80;
+				choice='Q';//CLEAR 2ND OBSTACLE WIDTH
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE FORWARD
+				value=60;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='A';//PARALLEL PARKING
+				value=80; //DIFF LEFT AND RIGHT
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='D';//PARALLEL PARKING PART 2
+				value=80;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='C';
+				value=150;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				choice='C';
+				value=150;
+				osDelay(200);
+			}
+			else if(value==002){//obstacle 1:left
+				osDelay(100);//so that choice is reset to X before executing next line
+				value=90;
+				choice='Q';//turn out
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=90;
+				choice='E';//CLEAR 2ND OBSTACLE
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE FORWARD
+				value=60;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='D';//PARALLEL PARKING
+				value=70;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='A';//PARALLEL PARKING PART 2
+				value=70;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='C';
+				value=150;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='C';
+				value=150;
+				osDelay(200);
+			}
+			else if(value==003){//turn right 2nd obstacle
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='E';//turn
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';
+				value=10;//move behind obstacle
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//pass behind obstacle 2
+				value=50;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=valuestore+50;//move back taking into account creep distances
+				choice='W';
+				valuestore=0;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				choice='C';//CREEP IN
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE IN parking lot
+				value=10;
+				osDelay(200);
+			}
+			else if(value==004){//turn left 2nd obstacle
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='Q';//turn
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';
+				value=10;//move behind obstacle
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//pass behind obstacle 2
+				value=50;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=valuestore+50;//move back taking into account creep distances
+				choice='W';
+				valuestore=0;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				choice='C';//CREEP IN
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE IN parking lot
+				value=10;
+				osDelay(200);
+			}
+			else if(value==5){//45 45 left
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='Q';//turn
+				value=50;//50 TO INCREASE CLEARANCE
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='E';//turn
+				value=50;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='C';//turn
+				value=150;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='A';//tilt for camera
+				value=10;
+				osDelay(200);
+			}
+			else if(value==6){//45 45 right
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='E';//turn
+				value=40;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='Q';//turn
+				value=40;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='C';//turn
+				value=150;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='D';//tilt for camera
+				value=10;
+				osDelay(200);
+			}
+			else if(value==7){//left left
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='Q';//turn + tilt back from cam
+				value=80;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=160;//uturn 70+90=160
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//pass behind obstacle 2
+				value=50;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=valuestore;//move back taking into account creep distances
+				choice='W';
+				valuestore=0;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				choice='C';//CREEP IN
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE IN parking lot
+				value=10;
+				osDelay(200);
+			}
+			else if(value==8){//left RIGHT
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='E';//turn
+				value=80;//TILT BACK LESS FOR CAM
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';
+				value=10;//utURN
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';
+				value=15;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//pass behind obstacle 2
+				value=40;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=valuestore;//move back taking into account creep distances
+				choice='W';
+				valuestore=0;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//turn towards parking lot
+				value=10;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				choice='C';//CREEP IN
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE IN parking lot
+				value=10;
+				osDelay(200);
+			}
+			else if(value==9){//RIGHT LEFT
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='Q';//turn
+				value=80;//TILT 10 DEGREES LESS
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';
+				value=20;//FORWARD
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';
+				value=15;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//pass behind obstacle 2
+				value=40;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=valuestore;//move back taking into account creep distances
+				choice='W';
+				valuestore=0;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';//turn towards parking lot
+				value=80;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';//turn towards parking lot
+				value=80;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				choice='C';//CREEP IN
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE IN parking lot
+				value=10;
+				osDelay(200);
+			}
+			else if(value==10){//right right
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='E';//turn + extra 10 for cam +5 EXTRA TURN
+				value=65;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=145;//uturn 50+90=140 +5 EXTRA TURN
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//pass behind obstacle 2
+				value=40;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=valuestore;//move back taking into account creep distances
+				choice='W';
+				valuestore=0;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//turn towards parking lot
+				value=15;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				choice='C';//CREEP IN
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE IN parking lot
+				value=10;
+				osDelay(200);
+			}
+			else if(value==11){//45 45 left modified first part
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='Q';//turn
+				value=55;//50 TO INCREASE CLEARANCE ori: 50
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='E';//turn
+				value=80; //ori: 50, 15 more to scan image
+				osDelay(200);
+			}
+			else if(value==12){//45 45 left modified second part
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='Q';//turn
+				value=25;//15 to recentre
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='C';//turn
+				value=150;
+				osDelay(200);
+			}
+			else if(value==13){//45 45 right
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='E';//turn
+				value=45; //ori: 40
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='Q';//turn
+				value=70; //ori: 40, 15 more to scan image
+				osDelay(200);
+			}
+			else if(value==14){//45 45 right PART 2
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='E';
+				value=25;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='C';//turn
+				value=150;
+				osDelay(200);
+			}
+			else if(value==15){//left left
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='Q';//turn + tilt back from cam
+				value=70; //ori: 80
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=160;//uturn 70+90=160
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//pass behind obstacle 2
+				value=45;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				if(valuestore<10){
+					value=95;
+				}
+				else{
+					value=90;
+				}
+				//value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=valuestore+50;//move back taking into account creep distances //added -10
+				choice='W';
+				valuestore=0;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';//turn towards parking lot
+				value=80; //ori: 90
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';//turn towards parking lot
+				value=80; //ori: 90
+				osDelay(200);
+				while (current != 'X') {} //wait for movement to finish
+				osDelay(100);
+				choice = 'W'; // move slightly forward after first turn
+				value = 10;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='C';//CREEP IN
+				value=150;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE IN parking lot
+				value=10;
+				osDelay(200);
+			}
+			else if(value==16){//left RIGHT
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='E';//turn
+				value=90;//TILT BACK LESS FOR CAM
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';
+				value=13;//utURN //ori: 10
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';
+				value=10;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//pass behind obstacle 2
+				value=45;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=valuestore+70;//move back taking into account creep distances
+				choice='W';
+				valuestore=0;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while (current != 'X') {} //wait for movement to finish
+				osDelay(100);
+				choice = 'W'; // move slightly forward after first turn
+				value = 15;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';//turn towards parking lot
+				value=89;
+				osDelay(200);
+				while (current != 'X') {} //wait for movement to finish
+				osDelay(100);
+				choice = 'W'; // move slightly forward after first turn
+				value = 10;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='C';//CREEP IN
+				value=150;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE IN parking lot
+				value=10;
+				osDelay(200);
+			}
+			else if(value==17){//RIGHT LEFT
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='Q';//turn
+				value=90;//ori:80
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';
+				value=13;//FORWARD
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';
+				value=15;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=90;//uturn
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//pass behind obstacle 2
+				value=40;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=valuestore+70;//move back taking into account creep distances
+				choice='W';
+				valuestore=0;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';//turn towards parking lot
+				value=89;
+				osDelay(200);
+				while (current != 'X') {} //wait for movement to finish
+				osDelay(100);
+				choice = 'W'; // move slightly forward after first turn
+				value = 10;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='C';//CREEP IN
+				value=150;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE IN parking lot
+				value=10;
+				osDelay(200);
+			}
+			else if(value==18){//right right
+				osDelay(100);//so that choice is reset to X before executing next line
+				choice='E';//turn + extra 10 for cam +5 EXTRA TURN
+				value=55;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				value=145;//uturn 50+90=140 +5 EXTRA TURN
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//pass behind obstacle 2
+				value=45;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';
+				if (valuestore<10){
+					value=95;
+				}
+				else{
+					value=90;
+				}
+				//value=90;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				value=valuestore+50;//move back taking into account creep distances
+				choice='W';
+				valuestore=0;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='Q';//turn towards parking lot
+				value=90;
+				osDelay(200);
+				while (current != 'X') {} //wait for movement to finish
+				osDelay(100);
+				choice = 'W'; // move slightly forward after first turn
+				value = 15;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='E';//turn towards parking lot
+				value=89;// ori:90
+				osDelay(200);
+				while (current != 'X') {} //wait for movement to finish
+				osDelay(100);
+				choice = 'W'; // move slightly forward after first turn
+				value = 10;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='C';//CREEP IN
+				value=150;
+				osDelay(200);
+				while(current!='X'){}//wait for movement to finish
+				osDelay(100);
+				choice='W';//MOVE IN parking lot
+				value=10;
+				osDelay(200);
+			}
+			customflag=0;
+			HAL_UART_Transmit(&huart3, (uint8_t*) &customend, 1, 0xFFFFFFFF);//SEND K
+		}
+		osDelay(1);
+	}
+  /* USER CODE END custom */
+}
+
+/* USER CODE BEGIN Header_ultrasonic */
+/**
+* @brief Function implementing the ULTRA thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_ultrasonic */
+void ultrasonic(void *argument)
+ {
+	/* USER CODE BEGIN ultrasonic */
+	/* Infinite loop */
+	for (;;) {
+		HCSR04_Read();
+		HAL_Delay(200);
+		//osDelay(1);
+	}
+	/* USER CODE END ultrasonic */
+}
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+
+  /* USER CODE END Error_Handler_Debug */
+}
+
+#ifdef  USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */
